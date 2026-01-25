@@ -1,6 +1,4 @@
-# AiTech Orbit 🪐
-
-**Orbit** is an enterprise-grade **Document Extraction and Analysis Pipeline**.
+**DocuMind** is an enterprise-grade **Document Extraction and Analysis Pipeline**.
 It automatically ingests documents (PDF, DOCX, XLSX, Images), extracts text and visual data using AI (OCR + VLM), structures the output, and stores it in a database for search or downstream processing.
 
 ---
@@ -371,4 +369,4 @@ This section explains **every** significant file and folder in the `src/` direct
 *   **`document_pipeline.py`**: **CORE ENGINE**. Orchestrates everything from Fast-Track checks to final indexing.
 
 ---
-*Documentation maintained by AiTech Orbit Team*
+*Documentation maintained by DocuMind Team*
