@@ -61,10 +61,9 @@ def extraction_task(self, task_payload: dict):
             logger.info(f"🔧 meaningful callback_url updated with protocol: {callback_url}")
 
     file_paths = task_payload.get("file_paths", [])
-    url = task_payload.get("url")
-    youtube_url = task_payload.get("youtube_url")
-
-    logger.info(f"🚀 Extraction Task started | Session: {session_id} | Files: {len(file_paths)} | URL: {bool(url)} | YouTube: {bool(youtube_url)}")
+    links = task_payload.get("links", [])
+    
+    logger.info(f"🚀 Extraction Task started | Session: {session_id} | Files: {len(file_paths)} | Links: {len(links)}")
 
     # Reconstruct "UploadFile" objects from disk paths
     mock_files = []
@@ -79,8 +78,7 @@ def extraction_task(self, task_payload: dict):
         # We wrap it in asyncio.run because Celery is synchronous by default
         result = asyncio.run(controller.process_documents(
             files=mock_files if mock_files else None,
-            url=url,
-            youtube_url=youtube_url,
+            links=links,
             author=task_payload.get("author"),
             use_ocr_vlm=task_payload.get("use_ocr_vlm"),
             session_id=session_id,

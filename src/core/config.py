@@ -94,7 +94,7 @@ class WorkerSettings(BaseModel):
     time_limit: int = 3660
     acks_late: bool = True
     reject_on_worker_lost: bool = True
-    backend_callback_url: str = "https://webhook.site/e96cad30-ba1e-4812-9190-55353a36d3df"
+    backend_callback_url: str = "https://webhook.site/e0d97e11-776e-4ceb-a382-fe61e6558bea"
 
 
 class Settings(BaseSettings):

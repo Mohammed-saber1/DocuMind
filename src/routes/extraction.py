@@ -28,12 +28,11 @@ class AsyncExtractionResponse(BaseModel):
     task_id: str
     session_id: str
     message: str
-
+backend_url = "https://webhook.site/e0d97e11-776e-4ceb-a382-fe61e6558bea"
 @extraction_router.post("/", response_model=AsyncExtractionResponse)
 async def extract_documents_async(
     files: Optional[List[UploadFile]] = File(None),
-    url: Optional[str] = Form(None),
-    youtube_url: Optional[str] = Form(None),
+    links: Optional[List[str]] = Form(None),
     author: str = Form("Default Author"),
     use_ocr_vlm: bool = Form(True),
     session_id: str = Form(...),
@@ -41,25 +40,23 @@ async def extract_documents_async(
     callback_url: Optional[str] = Form(None)
 ):
     """
-    Async extraction: Uploads files, URLs, or YouTube links -> Saves to disk -> Queues Celery Task.
+    Async extraction: Uploads files or links (Web/YouTube) -> Saves to disk -> Queues Celery Task.
     Returns 202 Accepted immediately.
     
     Accepts:
     - files: Document files (PDF, DOCX, XLSX, etc.), media files (MP4, MP3, etc.)
-    - url: Web page URL to scrape and extract content from
-    - youtube_url: YouTube video URL to transcribe
+    - links: List of URLs (Web pages or YouTube videos)
     
-    At least one of files, url, or youtube_url must be provided.
+    At least one of files or links must be provided.
     """
     # Validate that at least one input is provided
     has_files = files and len(files) > 0 and files[0].filename
-    has_url = url and url.strip()
-    has_youtube = youtube_url and youtube_url.strip()
+    has_links = links and len(links) > 0
     
-    if not has_files and not has_url and not has_youtube:
+    if not has_files and not has_links:
         raise HTTPException(
             status_code=400, 
-            detail="At least one input required: files, url, or youtube_url"
+            detail="At least one input required: files or links"
         )
     
     saved_file_info = []
@@ -84,11 +81,10 @@ async def extract_documents_async(
                     "type": file.content_type
                 })
         
-        # 2. Prepare Payload with URL support
+        # 2. Prepare Payload with Links support
         task_payload = {
             "file_paths": saved_file_info,
-            "url": url.strip().strip('"').strip("'") if has_url else None,
-            "youtube_url": youtube_url.strip().strip('"').strip("'") if has_youtube else None,
+            "links": links if has_links else [],
             "author": author,
             "use_ocr_vlm": use_ocr_vlm,
             "session_id": session_id,
@@ -103,10 +99,8 @@ async def extract_documents_async(
         input_types = []
         if has_files:
             input_types.append(f"{len(saved_file_info)} file(s)")
-        if has_url:
-            input_types.append("1 URL")
-        if has_youtube:
-            input_types.append("1 YouTube video")
+        if has_links:
+            input_types.append(f"{len(links)} link(s)")
         
         return {
             "status": "queued",

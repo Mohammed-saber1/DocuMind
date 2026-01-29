@@ -20,18 +20,25 @@ failure or low confidence.
 import os
 import json
 import base64
+import io
+from PIL import Image
 import requests
 from core.config import get_settings
-from typing import Dict, List
+from typing import Dict, List, Optional
 
 # Prompt used to guide the VLM's analysis
 VLM_PROMPT = "Describe this image in detail. If it contains text, transcribe it. If it is a chart or graph, summarize the key trends."
 
-# Supported models by provider (verified and working)
+# NOTE: Groq frequently updates their model availability. 
+# Check https://console.groq.com/docs/deprecations for the latest information.
+# As of January 2026, llama-3.2-11b-vision-preview has been decommissioned.
+
+# Supported models by provider (verified and working as of January 2026)
 SUPPORTED_MODELS = {
     "groq": [
-        "meta-llama/llama-4-scout-17b-16e-instruct",
-        "meta-llama/llama-4-maverick-17b-128e-instruct"
+        "meta-llama/llama-4-scout-17b-16e-instruct",      # Llama 4 Scout - supports vision + tool use
+        "meta-llama/llama-4-maverick-17b-128e-instruct",  # Llama 4 Maverick - supports vision + tool use
+        "llama-3.2-90b-vision-preview"                     # Llama 3.2 90B - larger model
     ],
     "mistral": [
         "pixtral-12b-2409"
@@ -43,13 +50,13 @@ SUPPORTED_MODELS = {
 
 # Default models for each provider
 DEFAULT_MODELS = {
-    "groq": "meta-llama/llama-4-scout-17b-16e-instruct",
+    "groq": "meta-llama/llama-4-scout-17b-16e-instruct",  # Updated to Llama 4 Scout
     "mistral": "pixtral-12b-2409",
     "local": "Qwen/Qwen2.5-VL-7B-Instruct"
 }
 
 
-def analyze_extracted_images(base_dir, image_paths):
+def analyze_extracted_images(base_dir: str, image_paths: List[str]) -> List[Dict]:
     """
     Analyze a list of images using the VLM.
     
@@ -57,13 +64,15 @@ def analyze_extracted_images(base_dir, image_paths):
     and returns the generated descriptions.
     
     Args:
-        base_dir (str): The root directory of the current document (context).
-        image_paths (list): List of absolute paths to images requiring analysis.
+        base_dir: The root directory of the current document (context).
+        image_paths: List of absolute paths to images requiring analysis.
     
     Returns:
-        list[dict]: A list of results. Each dict contains:
+        A list of results. Each dict contains:
             - 'image': str (filename)
             - 'content_images': str (the generated description)
+            - 'method': str (always "vlm")
+            - 'is_graph': bool (whether the image appears to be a chart/graph)
     """
     settings = get_settings()
     
@@ -71,7 +80,7 @@ def analyze_extracted_images(base_dir, image_paths):
         return []
     
     MAX_IMAGES_TO_ANALYZE = 10
-    MIN_IMAGE_SIZE_KB = 1  # Lowered to 1KB to ensure small but valid images are processed
+    MIN_IMAGE_SIZE_KB = 5  # Increased to 5KB to avoid tiny icons/tracking pixels
     
     # Filter images by size first
     valid_images = []
@@ -140,9 +149,36 @@ def analyze_extracted_images(base_dir, image_paths):
     return results
 
 
+def _validate_image(image_path: str) -> bool:
+    """
+    Validate that the image file is readable and has valid format.
+    
+    Args:
+        image_path: Path to the image file
+        
+    Returns:
+        True if image is valid, False otherwise
+    """
+    try:
+        from PIL import Image
+        with Image.open(image_path) as img:
+            img.verify()
+        return True
+    except Exception:
+        # If PIL is not available, do basic checks
+        if not os.path.exists(image_path):
+            return False
+        if os.path.getsize(image_path) == 0:
+            return False
+        # Check file extension
+        valid_extensions = {'.png', '.jpg', '.jpeg', '.gif', '.webp', '.bmp'}
+        ext = os.path.splitext(image_path)[1].lower()
+        return ext in valid_extensions
+
+
 def _call_vlm_api(image_path: str, api_url: str, timeout: int = 60, 
-                  model: str = None, api_key: str = None, 
-                  provider: str = "groq") -> Dict:
+                  model: Optional[str] = None, api_key: Optional[str] = None, 
+                  provider: str = "groq") -> Optional[Dict]:
     """
     Call the remote VLM API to analyze an image.
     
@@ -152,7 +188,7 @@ def _call_vlm_api(image_path: str, api_url: str, timeout: int = 60,
         image_path: Path to the image file
         api_url: URL of the VLM API endpoint
         timeout: Request timeout in seconds
-        model: Model name to use
+        model: Model name to use (optional, will use default if not specified)
         api_key: API key for authentication
         provider: "groq", "mistral", or "local"
     
@@ -162,27 +198,55 @@ def _call_vlm_api(image_path: str, api_url: str, timeout: int = 60,
     try:
         # Validate provider
         if provider not in DEFAULT_MODELS:
-            print(f"  ⚠️  Unknown provider: {provider}")
+            print(f"  ⚠️  Unknown provider: {provider}. Supported: {', '.join(DEFAULT_MODELS.keys())}")
+            return None
+        
+        # Validate image before processing
+        if not _validate_image(image_path):
+            print(f"  ⚠️  Invalid or corrupted image file: {os.path.basename(image_path)}")
             return None
         
         # Determine model to use
         requested_model = model or DEFAULT_MODELS[provider]
         
         # Validate model for provider
-        if provider in SUPPORTED_MODELS and requested_model not in SUPPORTED_MODELS[provider]:
+        if requested_model not in SUPPORTED_MODELS.get(provider, []):
             print(f"  ⚠️  Model '{requested_model}' not supported by {provider}.")
             print(f"     Supported models: {', '.join(SUPPORTED_MODELS[provider])}")
             print(f"     Using default: {DEFAULT_MODELS[provider]}")
             requested_model = DEFAULT_MODELS[provider]
         
-        # Read and encode image as base64
-        with open(image_path, "rb") as f:
-            image_data = base64.b64encode(f.read()).decode("utf-8")
+        # Standardize image to JPEG using PIL
+        # This fixes issues with "invalid image data" for some PNGs/WebPs on Groq
+        try:
+            with Image.open(image_path) as img:
+                # Convert to RGB (handling RGBA transparency)
+                if img.mode in ('RGBA', 'P', 'LA'):
+                    img = img.convert('RGB')
+                
+                # Check dimensions (filter out tiny images < 50x50)
+                width, height = img.size
+                if width < 50 or height < 50:
+                    print(f"  ⚠️  Image too small ({width}x{height}), skipping analysis")
+                    return None
+                    
+                # Save to in-memory JPEG
+                buf = io.BytesIO()
+                img.save(buf, format='JPEG', quality=85)
+                image_bytes = buf.getvalue()
+                
+                # Encode the sanitized JPEG data
+                image_data = base64.b64encode(image_bytes).decode("utf-8")
+                ext = "jpeg" # Force extension to jpeg
+                
+        except Exception as e:
+            print(f"  ⚠️  Failed to process image {os.path.basename(image_path)}: {e}")
+            return None
         
-        # Determine image type
-        ext = os.path.splitext(image_path)[1].lower().lstrip(".")
-        if ext == "jpg":
-            ext = "jpeg"
+        # Validate base64 encoding
+        if not image_data or len(image_data) < 100:
+            print(f"  ⚠️  Image encoding failed or file too small")
+            return None
         
         # Prepare headers
         headers = {"Content-Type": "application/json"}
@@ -233,11 +297,12 @@ def _call_vlm_api(image_path: str, api_url: str, timeout: int = 60,
                 "is_graph": "chart" in content.lower() or "graph" in content.lower()
             }
         else:
-            print(f"  ⚠️  VLM API returned status {response.status_code}: {response.text}")
+            error_msg = response.text
+            print(f"  ⚠️  VLM API returned status {response.status_code}: {error_msg}")
             return None
     
     except requests.exceptions.Timeout:
-        print(f"  ⚠️  VLM API request timed out")
+        print(f"  ⚠️  VLM API request timed out after {timeout}s")
         return None
     except requests.exceptions.ConnectionError:
         print(f"  ⚠️  Could not connect to VLM API at {api_url}")
@@ -247,7 +312,7 @@ def _call_vlm_api(image_path: str, api_url: str, timeout: int = 60,
         return None
 
 
-def analyze_single_image(image_path: str) -> Dict:
+def analyze_single_image(image_path: str) -> Optional[Dict]:
     """
     Analyze a single image using the VLM API.
     
@@ -255,7 +320,7 @@ def analyze_single_image(image_path: str) -> Dict:
         image_path: Path to the image file
     
     Returns:
-        Dictionary with description and analysis
+        Dictionary with description and analysis, or None on failure
     """
     settings = get_settings()
     

@@ -39,20 +39,18 @@ class ExtractionController(BaseController):
     async def process_documents(
         self,
         files: Optional[List[UploadFile]] = None,
-        url: Optional[str] = None,
-        youtube_url: Optional[str] = None,
+        links: Optional[List[str]] = None,
         author: str = "Default Author",
         use_ocr_vlm: bool = True,
         session_id: str = None,
         user_description: str = None
     ) -> dict:
         """
-        Process a batch of uploaded documents, URLs, or YouTube links asynchronously.
+        Process a batch of uploaded documents and links (Web/YouTube) asynchronously.
         
         Args:
             files: List of uploaded files (optional)
-            url: Web page URL to scrape (optional)
-            youtube_url: YouTube video URL to transcribe (optional)
+            links: List of URLs (Web pages of YouTube videos)
             author: Document author metadata
             use_ocr_vlm: Whether to use OCR/VLM processing
             session_id: Session identifier for grouping
@@ -69,6 +67,8 @@ class ExtractionController(BaseController):
         
         tasks = []
         file_maps = []
+        temp_paths_to_clean = []
+        
         temp_paths_to_clean = []
         
         # --- Process Files ---
@@ -100,33 +100,60 @@ class ExtractionController(BaseController):
                 file_maps.append({"name": file.filename, "type": "file"})
                 temp_paths_to_clean.append(temp_path)
         
-        # --- Process Web URL ---
-        if url:
-            url = url.strip().strip('"').strip("'")
-            print(f"🌐 Queueing URL: {url} (Session: {session_id})")
-            tasks.append(pipeline(
-                url=url,
-                author=author,
-                use_ocr_vlm=use_ocr_vlm,
-                save_to_mongo=False,
-                session_id=session_id,
-                user_description=user_description
-            ))
-            file_maps.append({"name": url, "type": "url"})
-        
-        # --- Process YouTube URL ---
-        if youtube_url:
-            youtube_url = youtube_url.strip().strip('"').strip("'")
-            print(f"📺 Queueing YouTube: {youtube_url} (Session: {session_id})")
-            tasks.append(pipeline(
-                youtube_url=youtube_url,
-                author=author,
-                use_ocr_vlm=use_ocr_vlm,
-                save_to_mongo=False,
-                session_id=session_id,
-                user_description=user_description
-            ))
-            file_maps.append({"name": youtube_url, "type": "youtube"})
+        # --- Process Links (Web & YouTube) ---
+        if links:
+            import json
+            expanded_links = []
+            
+            # First pass: Handle potential JSON stringified lists (e.g. '["url1", "url2"]')
+            for link_item in links:
+                if not link_item:
+                    continue
+                s_link = link_item.strip()
+                # Check if it looks like a JSON list
+                if s_link.startswith("[") and s_link.endswith("]"):
+                    try:
+                        parsed = json.loads(s_link)
+                        if isinstance(parsed, list):
+                            expanded_links.extend([str(l) for l in parsed])
+                        else:
+                            expanded_links.append(s_link)
+                    except Exception:
+                        expanded_links.append(s_link) # Fallback if parse fails
+                else:
+                    expanded_links.append(s_link)
+            
+            # Second pass: Process individual valid links
+            for link in expanded_links:
+                link = link.strip().strip('"').strip("'")
+                if not link:
+                    continue
+                    
+                # Auto-detect YouTube URL
+                is_youtube = "youtube.com" in link.lower() or "youtu.be" in link.lower()
+                
+                if is_youtube:
+                    print(f"📺 Queueing YouTube: {link} (Session: {session_id})")
+                    tasks.append(pipeline(
+                        youtube_url=link,
+                        author=author,
+                        use_ocr_vlm=use_ocr_vlm,
+                        save_to_mongo=False,
+                        session_id=session_id,
+                        user_description=user_description
+                    ))
+                    file_maps.append({"name": link, "type": "youtube"})
+                else:
+                    print(f"🌐 Queueing URL: {link} (Session: {session_id})")
+                    tasks.append(pipeline(
+                        url=link,
+                        author=author,
+                        use_ocr_vlm=use_ocr_vlm,
+                        save_to_mongo=False,
+                        session_id=session_id,
+                        user_description=user_description
+                    ))
+                    file_maps.append({"name": link, "type": "url"})
         
         # Validate we have at least one task
         if not tasks:
