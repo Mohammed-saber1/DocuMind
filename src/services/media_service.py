@@ -13,10 +13,19 @@ import os
 import uuid
 import tempfile
 import logging
+import csv
+import warnings
 from dataclasses import dataclass
 from typing import Optional
 
+# Suppress Whisper CPU warnings in Celery workers
+warnings.filterwarnings("ignore", message="Performing inference on CPU when CUDA is available")
+warnings.filterwarnings("ignore", message="FP16 is not supported on CPU")
+
 logger = logging.getLogger(__name__)
+
+# Global variable for Whisper model singleton
+_whisper_model = None
 
 
 @dataclass
@@ -28,23 +37,39 @@ class TranscriptionResult:
     segments: list  # List of {start, end, text} dicts
 
 
-def get_whisper_model():
+def get_whisper_model(model_size: str = "small", force_cpu: bool = False):
     """
     Lazy-load Whisper model to avoid memory usage when not needed.
     Uses singleton pattern to avoid reloading.
+    
+    Args:
+        model_size: Whisper model size (tiny, base, small, medium, large, large-v2, large-v3)
+                   Default is "small"
+        force_cpu: Force CPU usage even if CUDA is available (useful for Celery workers)
     """
     global _whisper_model
-    if '_whisper_model' not in globals() or _whisper_model is None:
+    if _whisper_model is None:
         try:
             import whisper
-            from core.config import get_settings
-            settings = get_settings()
+            import torch
+            import multiprocessing
             
-            logger.info(f"🔊 Loading Whisper model: {settings.whisper.model_size}")
-            _whisper_model = whisper.load_model(
-                settings.whisper.model_size,
-                device=settings.whisper.device
-            )
+            # Detect if we're in a forked process (Celery worker)
+            is_forked = multiprocessing.current_process().name != 'MainProcess'
+            
+            # Force CPU in forked processes to avoid CUDA re-initialization error
+            if is_forked or force_cpu:
+                device = "cpu"
+                logger.info("🔧 Using CPU (forked process or forced)")
+            else:
+                device = "cuda" if torch.cuda.is_available() else "cpu"
+            
+            logger.info(f"🔊 Loading Whisper model: {model_size}")
+            logger.info(f"🖥️ Using device: {device}")
+            
+            # Load model with specified size and device
+            _whisper_model = whisper.load_model(model_size, device=device)
+            
             logger.info("✅ Whisper model loaded successfully")
         except Exception as e:
             logger.error(f"❌ Failed to load Whisper model: {e}")
@@ -89,6 +114,41 @@ def download_youtube_audio(youtube_url: str, output_dir: str = None) -> str:
         'quiet': True,
         'no_warnings': True,
         'extract_flat': False,
+        'nocheckcertificate': True,
+        
+        # Enhanced anti-bot measures
+        'extractor_args': {
+            'youtube': {
+                'player_client': ['android', 'web', 'ios'],
+                'skip': ['hls', 'dash'],
+            }
+        },
+        
+        # Comprehensive headers
+        'http_headers': {
+            'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36',
+            'Accept': 'text/html,application/xhtml+xml,application/xml;q=0.9,*/*;q=0.8',
+            'Accept-Language': 'en-us,en;q=0.5',
+            'Accept-Encoding': 'gzip, deflate',
+            'DNT': '1',
+            'Connection': 'keep-alive',
+            'Upgrade-Insecure-Requests': '1',
+        },
+        
+        'referer': 'https://www.youtube.com/',
+        
+        # Add cookies support (optional, helps with age-restricted videos)
+        # Uncomment if you want to use browser cookies to avoid 403 errors
+        # 'cookiesfrombrowser': ('chrome',),  # or 'firefox', 'edge'
+        
+        # Retry options
+        'retries': 10,
+        'fragment_retries': 10,
+        'extractor_retries': 10,
+        'file_access_retries': 10,
+        
+        # Timeout options
+        'socket_timeout': 30,
     }
     
     try:
@@ -107,7 +167,7 @@ def download_youtube_audio(youtube_url: str, output_dir: str = None) -> str:
             ydl.download([youtube_url])
         
         # Find the actual output file (yt-dlp may change extension)
-        actual_path = output_path.replace('.mp3', '.mp3')
+        actual_path = output_path
         if not os.path.exists(actual_path):
             # Try to find the file
             for f in os.listdir(output_dir):
@@ -128,7 +188,14 @@ def download_youtube_audio(youtube_url: str, output_dir: str = None) -> str:
         elif "Video unavailable" in error_msg:
             raise ValueError("Video is unavailable or has been removed")
         elif "age-restricted" in error_msg.lower():
-            raise ValueError("Video is age-restricted and cannot be downloaded")
+            raise ValueError("Video is age-restricted. Enable 'cookiesfrombrowser' in ydl_opts to download.")
+        elif "403" in error_msg or "Forbidden" in error_msg:
+            raise RuntimeError(
+                "YouTube blocked the request (403 Forbidden). "
+                "Try: 1) Using browser cookies (uncomment 'cookiesfrombrowser'), "
+                "2) Waiting a few minutes before retrying, "
+                "3) Using a different network/VPN."
+            )
         else:
             raise RuntimeError(f"YouTube download failed: {error_msg}")
     except Exception as e:
@@ -188,12 +255,14 @@ def convert_to_mp3(input_path: str, output_dir: str = None) -> str:
         raise RuntimeError(f"Audio conversion failed: {e}")
 
 
-def transcribe_audio(audio_path: str) -> TranscriptionResult:
+def transcribe_audio(audio_path: str, model_size: str = "small") -> TranscriptionResult:
     """
-    Transcribe audio file using Whisper Large-v2.
+    Transcribe audio file using Whisper.
     
     Args:
         audio_path: Path to the audio file (MP3 preferred)
+        model_size: Whisper model size (tiny, base, small, medium, large, large-v2, large-v3)
+                   Default is "small"
         
     Returns:
         TranscriptionResult with text, language, duration, and segments
@@ -207,7 +276,7 @@ def transcribe_audio(audio_path: str) -> TranscriptionResult:
     
     try:
         logger.info(f"🎤 Transcribing audio: {audio_path}")
-        model = get_whisper_model()
+        model = get_whisper_model(model_size)
         
         # Transcribe with word-level timestamps
         result = model.transcribe(
@@ -243,13 +312,14 @@ def transcribe_audio(audio_path: str) -> TranscriptionResult:
         raise RuntimeError(f"Whisper transcription failed: {e}")
 
 
-def process_youtube_to_text(youtube_url: str, output_dir: str = None) -> tuple[str, TranscriptionResult]:
+def process_youtube_to_text(youtube_url: str, output_dir: str = None, model_size: str = "small") -> tuple[str, TranscriptionResult]:
     """
     Full pipeline: Download YouTube video and transcribe to text.
     
     Args:
         youtube_url: The YouTube video URL
         output_dir: Directory for temp files
+        model_size: Whisper model size (default: "small")
         
     Returns:
         Tuple of (audio_path, TranscriptionResult)
@@ -258,18 +328,19 @@ def process_youtube_to_text(youtube_url: str, output_dir: str = None) -> tuple[s
     audio_path = download_youtube_audio(youtube_url, output_dir)
     
     # Transcribe
-    result = transcribe_audio(audio_path)
+    result = transcribe_audio(audio_path, model_size)
     
     return audio_path, result
 
 
-def process_media_to_text(media_path: str, output_dir: str = None) -> tuple[str, TranscriptionResult]:
+def process_media_to_text(media_path: str, output_dir: str = None, model_size: str = "small") -> tuple[str, TranscriptionResult]:
     """
     Full pipeline: Convert media file to MP3 and transcribe.
     
     Args:
         media_path: Path to the audio/video file
         output_dir: Directory for temp files
+        model_size: Whisper model size (default: "small")
         
     Returns:
         Tuple of (mp3_path, TranscriptionResult)
@@ -278,31 +349,11 @@ def process_media_to_text(media_path: str, output_dir: str = None) -> tuple[str,
     mp3_path = convert_to_mp3(media_path, output_dir)
     
     # Transcribe
-    result = transcribe_audio(mp3_path)
+    result = transcribe_audio(mp3_path, model_size)
     
     return mp3_path, result
 
 
-# Supported media extensions
-SUPPORTED_VIDEO_EXTENSIONS = ['.mp4', '.mkv', '.avi', '.mov', '.webm', '.flv', '.wmv']
-SUPPORTED_AUDIO_EXTENSIONS = ['.mp3', '.wav', '.m4a', '.ogg', '.flac', '.aac', '.wma']
-SUPPORTED_MEDIA_EXTENSIONS = SUPPORTED_VIDEO_EXTENSIONS + SUPPORTED_AUDIO_EXTENSIONS
-
-
-def is_media_file(file_path: str) -> bool:
-    """Check if file is a supported media file."""
-    ext = os.path.splitext(file_path)[1].lower()
-    return ext in SUPPORTED_MEDIA_EXTENSIONS
-
-
-def is_video_file(file_path: str) -> bool:
-    """Check if file is a video file."""
-    ext = os.path.splitext(file_path)[1].lower()
-    return ext in SUPPORTED_VIDEO_EXTENSIONS
-
-
-def is_audio_file(file_path: str) -> bool:
-    """Check if file is an audio file."""
 def save_transcription_to_csv(transcription: TranscriptionResult, output_dir: str, filename_prefix: str) -> str:
     """
     Save transcription result to a CSV file with timestamps.
@@ -315,8 +366,6 @@ def save_transcription_to_csv(transcription: TranscriptionResult, output_dir: st
     Returns:
         Path to the saved CSV file
     """
-    import csv
-    
     os.makedirs(output_dir, exist_ok=True)
     
     # Clean filename
@@ -341,3 +390,27 @@ def save_transcription_to_csv(transcription: TranscriptionResult, output_dir: st
     except Exception as e:
         logger.error(f"❌ Failed to write CSV: {e}")
         return None
+
+
+# Supported media extensions
+SUPPORTED_VIDEO_EXTENSIONS = ['.mp4', '.mkv', '.avi', '.mov', '.webm', '.flv', '.wmv']
+SUPPORTED_AUDIO_EXTENSIONS = ['.mp3', '.wav', '.m4a', '.ogg', '.flac', '.aac', '.wma']
+SUPPORTED_MEDIA_EXTENSIONS = SUPPORTED_VIDEO_EXTENSIONS + SUPPORTED_AUDIO_EXTENSIONS
+
+
+def is_media_file(file_path: str) -> bool:
+    """Check if file is a supported media file."""
+    ext = os.path.splitext(file_path)[1].lower()
+    return ext in SUPPORTED_MEDIA_EXTENSIONS
+
+
+def is_video_file(file_path: str) -> bool:
+    """Check if file is a video file."""
+    ext = os.path.splitext(file_path)[1].lower()
+    return ext in SUPPORTED_VIDEO_EXTENSIONS
+
+
+def is_audio_file(file_path: str) -> bool:
+    """Check if file is an audio file."""
+    ext = os.path.splitext(file_path)[1].lower()
+    return ext in SUPPORTED_AUDIO_EXTENSIONS

@@ -2,7 +2,7 @@ import os
 import sys
 import logging
 from typing import List, Dict, Any
-from langchain_community.vectorstores import Chroma
+from langchain_chroma import Chroma
 
 # Configure Logging
 logging.basicConfig(level=logging.INFO)
@@ -36,7 +36,7 @@ def get_chroma_client(collection_name: str = "global_memory"):
     
     if collection_name not in _chroma_cache:
         import chromadb
-        from langchain_community.vectorstores import Chroma
+        from langchain_chroma import Chroma
         
         embeddings = get_embeddings()
         os.makedirs(CHROMA_DB_DIR, exist_ok=True)

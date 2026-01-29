@@ -41,7 +41,10 @@ class LLMSettings(BaseModel):
 
 
 class VLMSettings(BaseModel):
-    api_url: str = "http://192.168.1.127:8009/v1/chat/completions"
+    provider: str = "mistral"  # "mistral" or "local"
+    model: str = "mistral-large-2512"
+    api_key: str = ""
+    api_url: str = "https://api.mistral.ai/v1/chat/completions"
     timeout: int = 120
 
 

@@ -336,11 +336,12 @@ async def pipeline(
         from services.rag_service import process_document_for_rag
         from services.memory_service import index_chunks, check_hash_exists
         
-        # Calculate file hash for deduplication
-        file_hash = calculate_file_hash(file_path)
+        # Calculate file hash for deduplication (only if not already set for URLs)
+        if file_hash is None and file_path:
+            file_hash = calculate_file_hash(file_path)
         
         # Check if this file was already indexed in ChromaDB
-        if check_hash_exists(file_hash):
+        if file_hash and check_hash_exists(file_hash):
             print(f"♻️ File already indexed in RAG (Hash: {file_hash[:12]}...). Skipping.")
         else:
             chunks = []

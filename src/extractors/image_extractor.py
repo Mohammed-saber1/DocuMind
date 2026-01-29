@@ -3,11 +3,7 @@ import os
 from PIL import Image
 
 from utils.file_utils import create_document_folder, save_text, save_metadata
-try:
-    from image_vision_vlm import VisionAnalyzer
-except ImportError:
-    VisionAnalyzer = None
-    print("⚠️ Warning: image_vision_vlm module not found. Image analysis will be limited.")
+
 
 
 def extract_image(file_path):
@@ -28,7 +24,8 @@ def extract_image(file_path):
     save_text(text_dir, description)
     save_metadata(base, {
         "source": source_type,
-        "vlm_enabled": False, # VisionAnalyzer is not None,
+        "vlm_enabled": False,
+
         "description_length": len(description)
     })
 

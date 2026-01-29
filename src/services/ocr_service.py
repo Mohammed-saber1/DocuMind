@@ -2,6 +2,11 @@
 import os
 import json
 import logging
+
+# Suppress PaddlePaddle warnings (fscanf: Success [0])
+os.environ["GLOG_minloglevel"] = "2"
+os.environ["FLAGS_minloglevel"] = "2"
+
 from typing import List, Dict, Tuple, Optional
 
 # Configure logging

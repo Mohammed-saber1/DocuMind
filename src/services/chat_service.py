@@ -27,6 +27,8 @@ from services.db_service import (
 from core.config import get_settings
 from utils.file_utils import calculate_file_hash
 
+logger = logging.getLogger(__name__)
+
 class ChatService:
     """
     Service layer for chat functionality.
