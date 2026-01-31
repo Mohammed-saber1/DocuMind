@@ -42,6 +42,8 @@ from services.ocr_service import maybe_run_ocr
 from services.llm_service import run_agent, analyze_tables_with_llm
 from services.media_service import is_media_file, is_video_file
 from services.web_scraper_service import is_youtube_url
+from extractors.image_helpers import extract_images_from_docx, extract_images_from_pdf
+from services.vlm_service import analyze_extracted_images
 
 
 async def pipeline(
@@ -226,7 +228,23 @@ async def pipeline(
                         "pages": len(documents)
                     })
                     
-                    images = [] # LlamaParse handling of images to disk is not enabled here yet
+                    
+                    # EXTRACT IMAGES LOCALLY to enable OCR/VLM
+                    # LlamaParse handles text structure well, but we need raw images for VLM.
+                    print(f"🖼️ Extracting images locally from {ext}...")
+                    try:
+                        if ext == ".docx":
+                            images = extract_images_from_docx(file_path, img_dir)
+                        elif ext == ".pdf":
+                            images = extract_images_from_pdf(file_path, img_dir)
+                        else:
+                            images = []
+                        
+                        print(f"✅ Extracted {len(images)} images for analysis")
+                    except Exception as e:
+                        print(f"⚠️ Local image extraction failed: {e}")
+                        images = []
+
                     source = "llama_parse"
                     
                     # Overwrite functionality for RAG specific logic later
@@ -259,12 +277,33 @@ async def pipeline(
 
 
     # --- Save Extracted Images to Assets ---
-    # ... (existing image code) ...
+    # (Images are already saved to img_dir by extractors)
+    print(f"🖼️ Validating {len(images)} images for processing...")
     
-    # ... (existing OCR/VLM code) ...
-    # Note: If LlamaParse is used, images list might be empty, so OCR block stays skipped, which is fine.
-    
-    # ... (llm table analysis) ...
+    # --- OCR & VLM Processing ---
+    if use_ocr_vlm and images:
+        print(f"🚀 Starting OCR/VLM pipeline for {len(images)} images...")
+        
+        # 1. Runs OCR (if needed) - logic inside checks if text is already sufficient
+        # For LlamaParse, text is usually sufficient, so this often skips, which is correct.
+        ocr_text, ocr_conf = maybe_run_ocr(base, images)
+        print(f"✅ OCR Step Complete (Confidence: {ocr_conf})")
+        
+        # 2. Run VLM (Vision Language Model) on images
+        # This provides descriptions for diagrams, charts, etc.
+        try:
+            print(f"👁️ Running VLM analysis on images...")
+            vlm_results = analyze_extracted_images(base, images)
+            print(f"✅ VLM Step Complete (Analyzed {len(vlm_results)} images)")
+        except Exception as e:
+            print(f"⚠️ VLM Analysis failed: {e}")
+            
+    # --- LLM Table Analysis ---
+    try:
+        print("📊 Analyzing tables with LLM...")
+        analyze_tables_with_llm(base, source)
+    except Exception as e:
+        print(f"⚠️ Table analysis failed: {e}")
 
     # Run agent AFTER table analysis (so it can include analysis.json)
     parsed_path, parsed_data = await run_agent(base, source, doc_id, file_hash, author=author, user_description=user_description)
