@@ -58,6 +58,11 @@ class Settings:
     FILE_MAX_SIZE: int = int(os.getenv("FILE_MAX_SIZE", "104857600"))
     MAX_TEXT_LENGTH: int = int(os.getenv("MAX_TEXT_LENGTH", "50"))
 
+    # LlamaCloud Configuration
+    LLAMA_CLOUD_API_KEY: str = os.getenv("LLAMA_CLOUD_API_KEY", "")
+    LLAMA_CLOUD_TIER_PARSING: str = os.getenv("LLAMA_CLOUD_TIER_PARSING", "free")
+    TIMEOUT_PARSE_DOCUMENT: int = int(os.getenv("TIMEOUT_PARSE_DOCUMENT", "300"))
+
     @property
     def redis_url(self) -> str:
         """Construct Redis URL from components."""

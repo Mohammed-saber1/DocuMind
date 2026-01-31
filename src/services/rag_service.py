@@ -49,12 +49,53 @@ def semantic_chunking(original_text: str) -> List[str]:
     chunks = text_splitter.create_documents([original_text])
     return [chunk.page_content for chunk in chunks]
 
+def structure_aware_chunking(markdown_text: str) -> List[str]:
+    """
+    Chunk markdown text based on headers using LangChain's MarkdownHeaderTextSplitter.
+    Preserves document structure (Header 1 -> Header 2 -> Text).
+    """
+    from langchain_text_splitters import MarkdownHeaderTextSplitter
+    
+    logger.info("Splitting text with MarkdownHeaderTextSplitter (Structure-Aware)")
+    
+    # Define headers to split on
+    headers_to_split_on = [
+        ("#", "Header 1"),
+        ("##", "Header 2"),
+        ("###", "Header 3"),
+    ]
+    
+    markdown_splitter = MarkdownHeaderTextSplitter(headers_to_split_on=headers_to_split_on)
+    md_header_splits = markdown_splitter.split_text(markdown_text)
+    
+    # Convert Document objects back to simple text chunks with context
+    chunks = []
+    for doc in md_header_splits:
+        # Include header context in the chunk text if needed, or just the content
+        # The content already includes the text under the header.
+        # Verify if metadata is needed. For RAG, having header info in text is good.
+        # But split_text returns Document objects where page_content is the text.
+        # The metadata contains the headers.
+        
+        # We construct a rich text chunk: "Header 1 > Header 2: Content"
+        header_context = " > ".join([f"{k}: {v}" for k, v in doc.metadata.items()])
+        if header_context:
+            chunk_content = f"[{header_context}]\n{doc.page_content}"
+        else:
+            chunk_content = doc.page_content
+            
+        chunks.append(chunk_content)
+        
+    return chunks
+
 def process_document_for_rag(text_content: str, method: str = "token", **kwargs) -> List[str]:
     """
     Main entry point to chunk a document based on preferred method.
     """
     if method == "semantic":
         return semantic_chunking(text_content)
+    elif method == "structure":
+        return structure_aware_chunking(text_content)
     else:
         chunk_size = kwargs.get("chunk_size", 512)
         chunk_overlap = kwargs.get("chunk_overlap", 64)

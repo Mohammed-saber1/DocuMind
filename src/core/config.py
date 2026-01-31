@@ -117,6 +117,11 @@ class Settings(BaseSettings):
     file: FileSettings = FileSettings()
     worker: WorkerSettings = WorkerSettings()
 
+    # LlamaCloud Configuration
+    LLAMA_CLOUD_API_KEY: str = ""
+    LLAMA_CLOUD_TIER_PARSING: str = "free"
+    TIMEOUT_PARSE_DOCUMENT: int = 300
+
     # Logging
     log_level: str = "INFO"
     log_format: str = "%(asctime)s - %(name)s - %(levelname)s - %(message)s"
