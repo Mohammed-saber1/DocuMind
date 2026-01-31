@@ -6,7 +6,36 @@ from core.config import Settings
 from llama_index.core import Document
 from controllers.project_controller import ProjectController
 from llama_parse import LlamaParse
-from models.asset import Asset
+
+import sys
+import os
+import logging
+
+try:
+    from models.asset import Asset
+except ImportError:
+    logging.warning(f"⚠️ Import 'models' failed. CWD: {os.getcwd()}")
+    logging.warning(f"⚠️ sys.path: {sys.path}")
+    
+    # Attempt to fix path by adding the src directory (parent of controllers)
+    current_dir = os.path.dirname(os.path.abspath(__file__)) # src/controllers
+    src_dir = os.path.dirname(current_dir) # src
+    if src_dir not in sys.path:
+        sys.path.append(src_dir)
+        logging.warning(f"🔧 Added {src_dir} to sys.path")
+    
+    try:
+        from models.asset import Asset
+        logging.warning("✅ Import 'models' succeeded after path fix")
+    except ImportError as e:
+        logging.error(f"❌ Import 'models' failed AGAIN: {e}")
+        # Try relative as last resort (though we know it might fail for top-level)
+        try:
+            from ..models.asset import Asset
+        except ImportError:
+            raise e
+
+
 from utils.timeout import async_timeout_wrapper
 
 class Parser(BaseController):
@@ -46,7 +75,7 @@ class Parser(BaseController):
         self.logger.info(f"Start: parsing {len(files_paths)} files, project_id: {project_id}")
         
         async def _parse_coro():
-            return await self.parser.aload_data(file_paths=files_paths)
+            return await self.parser.aload_data(file_path=files_paths)
         
         timeout_seconds = self.timeout * len(files_paths)
         

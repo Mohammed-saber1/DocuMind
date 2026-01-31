@@ -54,7 +54,7 @@ def structure_aware_chunking(markdown_text: str) -> List[str]:
     Chunk markdown text based on headers using LangChain's MarkdownHeaderTextSplitter.
     Preserves document structure (Header 1 -> Header 2 -> Text).
     """
-    from langchain_text_splitters import MarkdownHeaderTextSplitter
+    from langchain_text_splitters import MarkdownHeaderTextSplitter, RecursiveCharacterTextSplitter
     
     logger.info("Splitting text with MarkdownHeaderTextSplitter (Structure-Aware)")
     
@@ -68,23 +68,36 @@ def structure_aware_chunking(markdown_text: str) -> List[str]:
     markdown_splitter = MarkdownHeaderTextSplitter(headers_to_split_on=headers_to_split_on)
     md_header_splits = markdown_splitter.split_text(markdown_text)
     
+    # Secondary splitter for strict size control
+    # Using 2000 chars to stay well within 8k context while allowing for metadata
+    recursive_splitter = RecursiveCharacterTextSplitter(
+        chunk_size=2000,
+        chunk_overlap=200,
+        separators=["\n\n", "\n", ".", " ", ""]
+    )
+
     # Convert Document objects back to simple text chunks with context
     chunks = []
     for doc in md_header_splits:
-        # Include header context in the chunk text if needed, or just the content
-        # The content already includes the text under the header.
-        # Verify if metadata is needed. For RAG, having header info in text is good.
-        # But split_text returns Document objects where page_content is the text.
-        # The metadata contains the headers.
-        
-        # We construct a rich text chunk: "Header 1 > Header 2: Content"
+        # Construct rich context: "Header 1 > Header 2"
         header_context = " > ".join([f"{k}: {v}" for k, v in doc.metadata.items()])
-        if header_context:
-            chunk_content = f"[{header_context}]\n{doc.page_content}"
+        
+        # Base content
+        content = doc.page_content
+        
+        # Check if content needs secondary splitting
+        if len(content) > 2000:
+             sub_chunks = recursive_splitter.split_text(content)
+             for sub in sub_chunks:
+                 if header_context:
+                     chunks.append(f"[{header_context}]\n{sub}")
+                 else:
+                     chunks.append(sub)
         else:
-            chunk_content = doc.page_content
-            
-        chunks.append(chunk_content)
+            if header_context:
+                chunks.append(f"[{header_context}]\n{content}")
+            else:
+                chunks.append(content)
         
     return chunks
 

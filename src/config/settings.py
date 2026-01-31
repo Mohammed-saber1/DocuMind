@@ -18,7 +18,7 @@ class Settings:
     """
 
     # Application
-    APP_NAME: str = os.getenv("APP_NAME", "Saber Orbit")
+    APP_NAME: str = os.getenv("APP_NAME", "DocuMind")
     APP_VERSION: str = os.getenv("APP_VERSION", "1.0.0")
 
     # MongoDB Configuration

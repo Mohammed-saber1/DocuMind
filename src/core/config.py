@@ -79,7 +79,7 @@ class ScraperSettings(BaseModel):
 class FileSettings(BaseModel):
     allowed_types: str = "pdf,docx,xlsx,xls,csv,pptx,png,jpg,jpeg,bmp,tiff,webp"
     max_size: int = 100 * 1024 * 1024  # 100MB
-    max_text_length: int = 50
+    max_text_length: int = 500
 
     @property
     def allowed_types_list(self) -> List[str]:
@@ -103,7 +103,7 @@ class Settings(BaseSettings):
     To override nested settings via env vars, use double underscores:
     e.g. MONGO__URL=...
     """
-    app_name: str = "Saber Orbit"
+    app_name: str = "DocuMind"
     app_version: str = "1.0.0"
     
     # Nested configurations

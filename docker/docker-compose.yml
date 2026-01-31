@@ -1,0 +1,42 @@
+# Docker Compose configuration for the RAG Production System.
+# This file orchestrates the services required for the application's environment.
+
+services:
+    # MongoDB Service: Acts as the primary metadata database.
+    # It stores project information, asset metadata, and processed text chunks.
+    mongo:
+        # Using a specific stable version of MongoDB.
+        image: mongo:6.0.26-rc0-jammy
+
+        # Explicit container name for easier management and identification.
+        container_name: mongodb
+
+        # Expose the standard MongoDB port for host-level access (e.g., via Compass or external drivers).
+        ports:
+            - "27017:27017" # HostPort:ContainerPort
+
+        # Persist database data to a named volume to prevent data loss on container deletion.
+        volumes:
+            - "mongodata:/data/db"
+
+        # Attach to the shared backend network.
+        networks:
+            - "backend"
+
+        # Environment variables for initial database setup, loaded from the .env file.
+        environment:
+            - MONGO_INITDB_ROOT_USERNAME=${MONGO_INITDB_ROOT_USERNAME}
+            - MONGO_INITDB_ROOT_PASSWORD=${MONGO_INITDB_ROOT_PASSWORD}
+
+        # Ensure the database always restarts unless explicitly stopped.
+        restart: always
+
+# Network definition for cross-container communication.
+networks:
+    backend:
+        driver: bridge
+
+# Volume definition for persistent data storage.
+volumes:
+    mongodata:
+        driver: local
