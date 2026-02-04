@@ -2,7 +2,7 @@
 Document Processing Pipeline ⚡
 ==============================
 
-This module contains the core business logic for the Saber Orbit system.
+This module contains the core business logic for the DocuMind system.
 It acts as the central orchestrator that takes a raw file and transforms it
 into structured, searchable data.
 
@@ -42,8 +42,6 @@ from services.ocr_service import maybe_run_ocr
 from services.llm_service import run_agent, analyze_tables_with_llm
 from services.media_service import is_media_file, is_video_file
 from services.web_scraper_service import is_youtube_url
-from extractors.image_helpers import extract_images_from_docx, extract_images_from_pdf
-from services.vlm_service import analyze_extracted_images
 
 
 async def pipeline(
@@ -190,78 +188,12 @@ async def pipeline(
     
     # --- Document Files ---
     elif input_type == "file":
-        # Check if we should use LlamaParse for supported types
-        llama_parse_types = [".pdf", ".docx", ".pptx", ".txt"]
-        
-        if ext in llama_parse_types:
-            print(f"🦙 Using LlamaParse for {ext} file...")
-            from controllers.parser_controller import Parser
-            from core.config import get_settings
-            from utils.file_utils import create_document_folder, save_text, save_metadata
-            
-            # Create standard folder structure
-            doc_id, base, text_dir, img_dir = create_document_folder(file_path)
-            
-            try:
-                # Initialize Parser
-                settings = get_settings()
-                parser = Parser(settings=settings)
-                
-                # Parse the file
-                # parse_files returns List[List[Document]] (one list per file)
-                # We passed one file, so take the first result
-                parsed_results = await parser.parse_files([file_path])
-                
-                if parsed_results and parsed_results[0]:
-                    documents = parsed_results[0]
-                    # Combine text from all pages/nodes
-                    full_markdown = "\n\n".join([doc.text for doc in documents])
-                    
-                    # Save the markdown content
-                    save_text(text_dir, full_markdown)
-                    
-                    # Create basic metadata
-                    save_metadata(base, {
-                        "source": "llama_parse",
-                        "original_ext": ext,
-                        "parser": "LlamaParse",
-                        "pages": len(documents)
-                    })
-                    
-                    
-                    # EXTRACT IMAGES LOCALLY to enable OCR/VLM
-                    # LlamaParse handles text structure well, but we need raw images for VLM.
-                    print(f"🖼️ Extracting images locally from {ext}...")
-                    try:
-                        if ext == ".docx":
-                            images = extract_images_from_docx(file_path, img_dir)
-                        elif ext == ".pdf":
-                            images = extract_images_from_pdf(file_path, img_dir)
-                        else:
-                            images = []
-                        
-                        print(f"✅ Extracted {len(images)} images for analysis")
-                    except Exception as e:
-                        print(f"⚠️ Local image extraction failed: {e}")
-                        images = []
-
-                    source = "llama_parse"
-                    
-                    # Overwrite functionality for RAG specific logic later
-                    # We want to signal that this is structured markdown
-                else:
-                    raise Exception("LlamaParse returned no content")
-                    
-            except Exception as e:
-                print(f"⚠️ LlamaParse failed: {e}. Falling back to legacy extractors.")
-                # Fallback logic could be complex to implement cleanly here without code duplication.
-                # For now, we raise or handle specific fallbacks if strictly needed,
-                # but let's assume if LlamaParse fails, we might want to stop or rely on basic exception handling.
-                # For this implementation, I will re-raise to be safe, or I can copy-paste lead legacy logic.
-                # Given user instructions, I'll assume LlamaParse is preferred and errors should be visible.
-                raise e
-
-        # Legacy/Other handlers
+        if ext == ".docx":
+            base, images, doc_id, source = extract_word(file_path)
+        elif ext == ".pdf":
+            base, images, doc_id, source = extract_pdf(file_path)
+        elif ext == ".pptx":
+            base, images, doc_id, source = extract_ppt(file_path)
         elif ext in [".xlsx", ".xls", ".xlsm"]:
             base, images, doc_id, source = extract_excel(file_path)
         elif ext == ".csv":
@@ -269,42 +201,103 @@ async def pipeline(
         elif ext in [".png", ".jpg", ".jpeg", ".bmp", ".tiff", ".webp"]:
             base, images, doc_id, source = extract_image(file_path)
         else:
-            if ext not in llama_parse_types: # Should be caught above, but safety check
-                raise ValueError(f"Unsupported file type: {ext}")
+            raise ValueError(f"Unsupported file type: {ext}")
     
     else:
         raise ValueError(f"Unknown input type: {input_type}")
 
 
     # --- Save Extracted Images to Assets ---
-    # (Images are already saved to img_dir by extractors)
-    print(f"🖼️ Validating {len(images)} images for processing...")
-    
-    # --- OCR & VLM Processing ---
-    if use_ocr_vlm and images:
-        print(f"🚀 Starting OCR/VLM pipeline for {len(images)} images...")
-        
-        # 1. Runs OCR (if needed) - logic inside checks if text is already sufficient
-        # For LlamaParse, text is usually sufficient, so this often skips, which is correct.
-        ocr_text, ocr_conf = maybe_run_ocr(base, images)
-        print(f"✅ OCR Step Complete (Confidence: {ocr_conf})")
-        
-        # 2. Run VLM (Vision Language Model) on images
-        # This provides descriptions for diagrams, charts, etc.
-        try:
-            print(f"👁️ Running VLM analysis on images...")
-            vlm_results = analyze_extracted_images(base, images)
-            print(f"✅ VLM Step Complete (Analyzed {len(vlm_results)} images)")
-        except Exception as e:
-            print(f"⚠️ VLM Analysis failed: {e}")
-            
-    # --- LLM Table Analysis ---
-    try:
-        print("📊 Analyzing tables with LLM...")
-        analyze_tables_with_llm(base, source)
-    except Exception as e:
-        print(f"⚠️ Table analysis failed: {e}")
+    # !! DISABLED TO PREVENT DISK LOAD !!
+    # --- Save Extracted Images to Assets ---
+    # (Disabled: Images are currently processed in memory or temp)
+    # ---------------------------------------
+    # ---------------------------------------
 
+    
+    # --- Smart OCR/VLM Logic ---
+    if use_ocr_vlm and images:
+        from services.ocr_service import run_ocr_on_images_async, should_use_ocr, OCR_THRESHOLD
+        
+        # 1. Run OCR on all images first (async for better performance)
+        ocr_results = await run_ocr_on_images_async(images)
+        
+        final_content_parts = []
+        images_for_vlm = []
+        ocr_success_results = []  # Store successful OCR results for MongoDB
+        
+        for res in ocr_results:
+            path = res['path']
+            text = res['text']
+            conf = res['confidence']
+            
+            # LOGIC: Determine if OCR was successful
+            ocr_successful = conf >= OCR_THRESHOLD and text and len(text.strip()) >= 10
+            
+            if ocr_successful:
+                # OCR succeeded - save to content and to structured results
+                print(f"✅ High OCR confidence ({conf:.2f}) for {os.path.basename(path)}. Skipping VLM.")
+                final_content_parts.append(f"[Image Text ({os.path.basename(path)}): {text}]")
+                
+                # Store for MongoDB
+                ocr_success_results.append({
+                    "method": "ocr",
+                    "image": os.path.basename(path),
+                    "content_images": text.strip(),
+                    "confidence": round(conf, 2)
+                })
+            else:
+                # OCR failed or low confidence - queue for VLM
+                print(f"📉 Low OCR confidence ({conf:.2f}) for {os.path.basename(path)}. Queueing for VLM.")
+                images_for_vlm.append(path)
+
+        # 2. Save OCR results to JSON (for MongoDB inclusion)
+        if ocr_success_results:
+            ocr_analysis_path = os.path.join(base, "images", "ocr_analysis.json")
+            os.makedirs(os.path.dirname(ocr_analysis_path), exist_ok=True)
+            with open(ocr_analysis_path, "w", encoding="utf-8") as f:
+                json.dump(ocr_success_results, f, indent=2, ensure_ascii=False)
+            print(f"✅ OCR Analysis saved for {len(ocr_success_results)} images")
+
+        # 3. Run VLM on selected low-confidence images
+        if images_for_vlm:
+            from services.vlm_service import analyze_extracted_images
+            
+            # Analyze (and auto-move to vlm_processed folder in service)
+            vlm_results = analyze_extracted_images(base, images_for_vlm)
+            
+            # Add VLM descriptions to final content
+            for v_res in vlm_results:
+                desc = v_res.get('content_images', '')
+                if desc:
+                    final_content_parts.append(f"[Image Description ({v_res['image']}): {desc}]")
+        
+        # 4. Save combined content to content.txt
+        if final_content_parts:
+            text_path = os.path.join(base, "text", "content.txt")
+            os.makedirs(os.path.dirname(text_path), exist_ok=True)
+            
+            # Read existing text if any (e.g. from docx text)
+            existing_text = ""
+            if os.path.exists(text_path):
+                with open(text_path, "r", encoding="utf-8") as f:
+                    existing_text = f.read()
+
+            # Append image insights
+            combined_text = existing_text + "\n\n" + "\n\n".join(final_content_parts)
+            
+            with open(text_path, "w", encoding="utf-8") as f:
+                f.write(combined_text)
+                
+    # ---------------------------
+
+    # (Legacy VLM block removed - handled in Smart Loop above)
+
+    # Auto-analyze tables for Excel and CSV files
+    if source in ["excel", "csv"]:
+        print("\n🔍 Analyzing tables with LLM...")
+        await analyze_tables_with_llm(base)
+    
     # Run agent AFTER table analysis (so it can include analysis.json)
     parsed_path, parsed_data = await run_agent(base, source, doc_id, file_hash, author=author, user_description=user_description)
 
@@ -337,14 +330,13 @@ async def pipeline(
             
             # Use row-based chunking for Excel/CSV files
             if source in ["excel", "csv"]:
-                # ... (existing excel logic) ...
                 from services.rag_service import create_excel_chunks, create_enhanced_excel_summary
                 
                 print("📊 Using row-based chunking for Excel/CSV file...")
                 row_chunks, row_metadata = create_excel_chunks(base, source)
                 
                 if row_chunks:
-                     # Add common metadata to each row
+                    # Add common metadata to each row
                     for meta in row_metadata:
                         meta.update({
                             "source": source,
@@ -358,6 +350,7 @@ async def pipeline(
                     
                     chunks = row_chunks
                     metadata = row_metadata
+                    print(f"✅ Created {len(chunks)} row-based chunks from Excel/CSV")
                     
                     # Optionally add a summary chunk for high-level context
                     summary = create_enhanced_excel_summary(base)
@@ -372,8 +365,8 @@ async def pipeline(
                             "file_hash": file_hash,
                             "chunk_type": "excel_summary"
                         })
-
-            # Use token-based OR structure-based chunking for other document types
+            
+            # Use token-based chunking for other document types (PDF, DOCX, etc.)
             else:
                 # OPTIMIZATION: Use cleaned content from LLM parsing if available
                 final_text = ""
@@ -388,13 +381,8 @@ async def pipeline(
                             final_text = f.read()
                 
                 if final_text.strip():
-                    # Determine method based on source
-                    chunking_method = "token"
-                    if source == "llama_parse":
-                        print("🧱 Using Structure-Aware Chunking (Markdown)...")
-                        chunking_method = "structure"
-                    
-                    chunks = process_document_for_rag(final_text, method=chunking_method)
+                    # Use Token-based chunking by default
+                    chunks = process_document_for_rag(final_text, method="token")
                     
                     # Metadata for ChromaDB (include file_hash for deduplication)
                     metadata = [{
@@ -404,7 +392,7 @@ async def pipeline(
                         "author": author,
                         "session_id": session_id or "default",
                         "file_hash": file_hash,
-                        "chunk_type": chunking_method
+                        "chunk_type": "token"
                     } for _ in chunks]
             
             # Index in ChromaDB

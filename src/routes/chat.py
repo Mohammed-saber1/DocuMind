@@ -2,7 +2,7 @@
 Chat Routes API 💬
 ==================
 
-FastAPI routes for the Saber Orbit Chatbot.
+FastAPI routes for the DocuMind Chatbot.
 
 Endpoints:
 - POST /api/v1/chat/           - Standard chat (RAG-powered)

@@ -49,66 +49,12 @@ def semantic_chunking(original_text: str) -> List[str]:
     chunks = text_splitter.create_documents([original_text])
     return [chunk.page_content for chunk in chunks]
 
-def structure_aware_chunking(markdown_text: str) -> List[str]:
-    """
-    Chunk markdown text based on headers using LangChain's MarkdownHeaderTextSplitter.
-    Preserves document structure (Header 1 -> Header 2 -> Text).
-    """
-    from langchain_text_splitters import MarkdownHeaderTextSplitter, RecursiveCharacterTextSplitter
-    
-    logger.info("Splitting text with MarkdownHeaderTextSplitter (Structure-Aware)")
-    
-    # Define headers to split on
-    headers_to_split_on = [
-        ("#", "Header 1"),
-        ("##", "Header 2"),
-        ("###", "Header 3"),
-    ]
-    
-    markdown_splitter = MarkdownHeaderTextSplitter(headers_to_split_on=headers_to_split_on)
-    md_header_splits = markdown_splitter.split_text(markdown_text)
-    
-    # Secondary splitter for strict size control
-    # Using 2000 chars to stay well within 8k context while allowing for metadata
-    recursive_splitter = RecursiveCharacterTextSplitter(
-        chunk_size=2000,
-        chunk_overlap=200,
-        separators=["\n\n", "\n", ".", " ", ""]
-    )
-
-    # Convert Document objects back to simple text chunks with context
-    chunks = []
-    for doc in md_header_splits:
-        # Construct rich context: "Header 1 > Header 2"
-        header_context = " > ".join([f"{k}: {v}" for k, v in doc.metadata.items()])
-        
-        # Base content
-        content = doc.page_content
-        
-        # Check if content needs secondary splitting
-        if len(content) > 2000:
-             sub_chunks = recursive_splitter.split_text(content)
-             for sub in sub_chunks:
-                 if header_context:
-                     chunks.append(f"[{header_context}]\n{sub}")
-                 else:
-                     chunks.append(sub)
-        else:
-            if header_context:
-                chunks.append(f"[{header_context}]\n{content}")
-            else:
-                chunks.append(content)
-        
-    return chunks
-
 def process_document_for_rag(text_content: str, method: str = "token", **kwargs) -> List[str]:
     """
     Main entry point to chunk a document based on preferred method.
     """
     if method == "semantic":
         return semantic_chunking(text_content)
-    elif method == "structure":
-        return structure_aware_chunking(text_content)
     else:
         chunk_size = kwargs.get("chunk_size", 512)
         chunk_overlap = kwargs.get("chunk_overlap", 64)

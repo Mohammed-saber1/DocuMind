@@ -10,6 +10,17 @@ __pycache__/
 *.pyd
 
 # =========================
+# Virtual Environments
+# =========================
+venv/
+.venv/
+env/
+ENV/
+.env
+.env.*
+!.env.example
+
+# =========================
 # Distribution / Packaging
 # =========================
 dist/
@@ -21,37 +32,44 @@ build/
 *.spec
 
 # =========================
-# Virtual Environments
+# Runtime & Logs
 # =========================
-venv/
-.venv/
-ENV/
-env/
-.env
-.env.local
-.env.*.local
-
-# =========================
-# Project Assets & Runtime
-# =========================
-assets/
-src/temp/
-src/assets/files/
-src/assets/memories/
 *.log
 logs/
+*.pid
+celerybeat-schedule
+celerybeat.pid
 
 # =========================
-# Test Files
+# Project Assets / Data
 # =========================
-test_*.py
-*_test.py
-tests/
+# Ignore specific asset contents but keep the folder structure if needed
+src/assets/files/*
+src/assets/memories/*
+!src/assets/files/.gitkeep
+!src/assets/memories/.gitkeep
+src/temp/
+assets/
+
+# =========================
+# Databases
+# =========================
+*.sqlite3
+*.db
+dump.rdb
+
+# =========================
+# Testing & Code Quality
+# =========================
 .pytest_cache/
 .coverage
 htmlcov/
 .tox/
 .nox/
+coverage.xml
+.mypy_cache/
+.ruff_cache/
+.hypotheses/
 
 # =========================
 # IDEs & Editors

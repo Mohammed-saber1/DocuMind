@@ -131,7 +131,7 @@ class ChatService:
 
     def build_system_prompt(self) -> str:
         """Build the system prompt for the AI assistant."""
-        return """You are the Orbit AI Assistant, a helpful expert that answers questions based on the provided document context.
+        return """You are the DocuMind AI Assistant, a helpful expert that answers questions based on the provided document context.
 
 INSTRUCTIONS:
 - Use ONLY the context provided to answer the user's question accurately.

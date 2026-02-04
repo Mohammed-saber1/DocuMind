@@ -2,7 +2,7 @@
 Chat Controller 🎮
 ==================
 
-Controller for the Saber Orbit Chatbot.
+Controller for the DocuMind Chatbot.
 Handles API request validation and delegates to ChatService for business logic.
 
 This follows the Controller -> Service pattern for clean separation of concerns.

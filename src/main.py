@@ -1,8 +1,8 @@
 """
-Orbit - Document Extraction Pipeline 🪐
+DocuMind - Document Extraction Pipeline �
 =============================================
 
-This is the main entry point for the Orbit FastAPI application.
+This is the main entry point for the DocuMind FastAPI application.
 It initializes the application, sets up lifecycle management (startup/shutdown),
 and registers the API routers.
 
@@ -65,7 +65,7 @@ app = FastAPI(
     title=settings.app_name,
     version=settings.app_version,
     description="""
-     Orbit API 🪐
+     DocuMind API 🧠
     
     An intelligent document extraction service that uses hybrid OCR and VLM 
     techniques to process documents, extract structured data, and enable RAG workflows.

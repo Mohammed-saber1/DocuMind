@@ -60,10 +60,25 @@ def index_chunks(chunks: List[str], metadata: List[Dict[str, Any]] = None, colle
     logger.info(f"Indexing {len(chunks)} chunks into ChromaDB collection: {collection_name}")
     vectorstore = get_chroma_client(collection_name)
     
-    if metadata and len(metadata) == len(chunks):
-        vectorstore.add_texts(texts=chunks, metadatas=metadata)
+    # Safety: Truncate chunks that exceed embedding model's context length
+    # nomic-embed-text has ~2048 token limit, ~6000 chars is safe buffer
+    MAX_CHUNK_CHARS = 6000
+    truncated_count = 0
+    safe_chunks = []
+    for chunk in chunks:
+        if len(chunk) > MAX_CHUNK_CHARS:
+            safe_chunks.append(chunk[:MAX_CHUNK_CHARS] + "...")
+            truncated_count += 1
+        else:
+            safe_chunks.append(chunk)
+    
+    if truncated_count:
+        logger.warning(f"Truncated {truncated_count} oversized chunks to prevent embedding overflow")
+    
+    if metadata and len(metadata) == len(safe_chunks):
+        vectorstore.add_texts(texts=safe_chunks, metadatas=metadata)
     else:
-        vectorstore.add_texts(texts=chunks)
+        vectorstore.add_texts(texts=safe_chunks)
     
     logger.info("Successfully indexed chunks.")
 
@@ -80,38 +95,66 @@ def search_similar_chunks(query: str, collection_name: str = "global_memory", k:
         source_id: Filter by source_id (optional)
     """
     logger.info(f"Searching for similar chunks to: '{query[:50]}...' (k={k}, session={session_id}, source={source_id})")
-    vectorstore = get_chroma_client(collection_name)
     
-    search_kwargs = {"k": k}
-    
-    # Build filter dictionary
-    filters = {}
-    if session_id and source_id:
-        # ChromaDB requires $and for multiple filters
-        filters = {"$and": [{"session_id": session_id}, {"source_id": source_id}]}
-        logger.info(f"Filtering by session_id AND source_id using $and")
-    elif session_id:
-        filters = {"session_id": session_id}
-        logger.info(f"Filtering by session_id: {session_id}")
-    elif source_id:
-        filters = {"source_id": source_id}
-        logger.info(f"Filtering by source_id: {source_id}")
+    try:
+        vectorstore = get_chroma_client(collection_name)
         
-    if filters:
-        search_kwargs["filter"] = filters
-    else:
-        logger.info("No filters - searching ALL documents")
+        search_kwargs = {"k": k}
         
-    results = vectorstore.similarity_search(query, **search_kwargs)
-    
-    # Log what we found
-    for i, doc in enumerate(results):
-        source = doc.metadata.get("source", "unknown")
-        doc_session = doc.metadata.get("session_id", "none")
-        doc_source_id = doc.metadata.get("source_id", "none")
-        logger.info(f"  Result {i+1}: source={source}, session={doc_session}, source_id={doc_source_id}")
-    
-    return results
+        # Build filter dictionary
+        filters = {}
+        if session_id and source_id:
+            # ChromaDB requires $and for multiple filters
+            filters = {"$and": [{"session_id": session_id}, {"source_id": source_id}]}
+            logger.info(f"Filtering by session_id AND source_id using $and")
+        elif session_id:
+            filters = {"session_id": session_id}
+            logger.info(f"Filtering by session_id: {session_id}")
+        elif source_id:
+            filters = {"source_id": source_id}
+            logger.info(f"Filtering by source_id: {source_id}")
+            
+        if filters:
+            search_kwargs["filter"] = filters
+        else:
+            logger.info("No filters - searching ALL documents")
+            
+        results = vectorstore.similarity_search(query, **search_kwargs)
+        
+        # Log what we found
+        for i, doc in enumerate(results):
+            source = doc.metadata.get("source", "unknown")
+            doc_session = doc.metadata.get("session_id", "none")
+            doc_source_id = doc.metadata.get("source_id", "none")
+            logger.info(f"  Result {i+1}: source={source}, session={doc_session}, source_id={doc_source_id}")
+        
+        return results
+
+    except Exception as e:
+        error_msg = str(e)
+        logger.error(f"Error in search_similar_chunks: {error_msg}")
+        
+        # Retry mechanism for specific ChromaDB errors that might be fixed by client refresh
+        if "Error finding id" in error_msg or "sqlite" in error_msg.lower():
+            logger.warning("Encountered potential stale connection/index error. Invaliding cache and retrying...")
+            
+            # Invalidate cache for this collection
+            global _chroma_cache
+            if collection_name in _chroma_cache:
+                del _chroma_cache[collection_name]
+            
+            # Retry once
+            try:
+                # Re-get client (will create new)
+                vectorstore = get_chroma_client(collection_name)
+                results = vectorstore.similarity_search(query, **search_kwargs)
+                logger.info(f"Retry successful. Found {len(results)} results.")
+                return results
+            except Exception as retry_e:
+                logger.error(f"Retry failed: {retry_e}")
+                raise retry_e
+        
+        raise e
 
 
 def check_hash_exists(file_hash: str, session_id: str = None, collection_name: str = "global_memory") -> bool:

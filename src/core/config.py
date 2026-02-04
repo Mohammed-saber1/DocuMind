@@ -9,6 +9,21 @@ from pydantic import BaseModel
 from pydantic_settings import BaseSettings, SettingsConfigDict
 
 
+class RedisSettings(BaseModel):
+    host: str = "localhost"
+    port: int = 6380
+    db: int = 0
+    username: str | None = None
+    password: str | None = None
+    ssl: bool = False
+
+    @property
+    def url(self) -> str:
+        if self.username and self.password:
+            return f"redis://{self.username}:{self.password}@{self.host}:{self.port}/{self.db}"
+        return f"redis://{self.host}:{self.port}/{self.db}"
+
+
 class MongoSettings(BaseModel):
     url: str = "mongodb://localhost:27017/"
     db_name: str = "DocuMind"
@@ -62,6 +77,13 @@ class ChromaSettings(BaseModel):
     db_dir: str = "assets/memories/chroma_db"
 
 
+class LlamaCloudSettings(BaseModel):
+    """Settings for LlamaCloud/LlamaParse document parsing."""
+    api_key: str = ""
+    timeout: int = 300  # 5 minutes per document
+    enabled: bool = True  # Enable LlamaParse for supported file types
+
+
 class WhisperSettings(BaseModel):
     """Settings for Whisper audio transcription."""
     model_size: str = "large-v2"
@@ -79,7 +101,7 @@ class ScraperSettings(BaseModel):
 class FileSettings(BaseModel):
     allowed_types: str = "pdf,docx,xlsx,xls,csv,pptx,png,jpg,jpeg,bmp,tiff,webp"
     max_size: int = 100 * 1024 * 1024  # 100MB
-    max_text_length: int = 500
+    max_text_length: int = 50
 
     @property
     def allowed_types_list(self) -> List[str]:
@@ -108,19 +130,16 @@ class Settings(BaseSettings):
     
     # Nested configurations
     mongo: MongoSettings = MongoSettings()
+    redis: RedisSettings = RedisSettings()
     llm: LLMSettings = LLMSettings()
     vlm: VLMSettings = VLMSettings()
     ocr: OCRSettings = OCRSettings()
     chroma: ChromaSettings = ChromaSettings()
+    llama_cloud: LlamaCloudSettings = LlamaCloudSettings()
     whisper: WhisperSettings = WhisperSettings()
     scraper: ScraperSettings = ScraperSettings()
     file: FileSettings = FileSettings()
     worker: WorkerSettings = WorkerSettings()
-
-    # LlamaCloud Configuration
-    LLAMA_CLOUD_API_KEY: str = ""
-    LLAMA_CLOUD_TIER_PARSING: str = "free"
-    TIMEOUT_PARSE_DOCUMENT: int = 300
 
     # Logging
     log_level: str = "INFO"

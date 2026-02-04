@@ -1,13 +1,13 @@
 from celery import Celery
-from config import REDIS_URL
 from core.config import get_settings
 
 settings = get_settings()
+redis_url = settings.redis.url
 
 celery_app = Celery(
     "worker_knowledge_base",
-    broker=REDIS_URL,
-    backend=REDIS_URL,
+    broker=redis_url,
+    backend=redis_url,
     include=["worker.tasks"]  # Where your tasks live
 )
 
