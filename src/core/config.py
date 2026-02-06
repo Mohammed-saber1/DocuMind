@@ -54,6 +54,12 @@ class LLMSettings(BaseModel):
     temperature: float = 0.0
     base_url: str = "http://localhost:11434"
     embedding_base_url: str = "http://localhost:11434"
+    provider: str = "ollama"  # "ollama", "mistral", "openai"
+    api_key: str = ""
+    api_url: str = ""
+    provider: str = "ollama"  # "ollama", "mistral", "openai"
+    api_key: str = ""
+    api_url: str = ""
 
 
 class VLMSettings(BaseModel):

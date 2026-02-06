@@ -170,11 +170,31 @@ async def run_agent(base_dir, source, source_id, file_hash, author="", user_desc
     print(f"🤖 Calling LLM for parsing... (Tables: {table_count}, Images: {len(all_images_data)})")
     
     settings = get_settings()
-    llm = ChatOllama(
-        model=settings.llm.model,
-        temperature=settings.llm.temperature,
-        base_url=settings.llm.base_url
-    )
+    
+    if settings.llm.provider == "mistral":
+        try:
+            from langchain_mistralai import ChatMistralAI
+            print("🚀 Using Mistral AI")
+            llm = ChatMistralAI(
+                model=settings.llm.model,
+                temperature=settings.llm.temperature,
+                mistral_api_key=settings.llm.api_key,
+                endpoint=settings.llm.base_url if settings.llm.base_url else None
+            )
+        except ImportError:
+            logger.error("❌ langchain-mistralai not installed. Falling back to Ollama.")
+            llm = ChatOllama(
+                model=settings.llm.model,
+                temperature=settings.llm.temperature,
+                base_url=settings.llm.base_url
+            )
+    else:
+        # Default to Ollama
+        llm = ChatOllama(
+            model=settings.llm.model,
+            temperature=settings.llm.temperature,
+            base_url=settings.llm.base_url
+        )
     
     # Use Async invoke
     try:
@@ -474,11 +494,28 @@ Return your analysis as JSON:
         print("🧠 Running advanced table analysis...")
         from core.config import get_settings
         settings = get_settings()
-        llm = ChatOllama(
-            model=settings.llm.model,
-            temperature=0.3,  # Slightly higher for creative analysis
-            base_url=settings.llm.base_url
-        )
+        
+        if settings.llm.provider == "mistral":
+            try:
+                from langchain_mistralai import ChatMistralAI
+                llm = ChatMistralAI(
+                    model=settings.llm.model,
+                    temperature=0.3,
+                    mistral_api_key=settings.llm.api_key,
+                    endpoint=settings.llm.base_url if settings.llm.base_url else None
+                )
+            except ImportError:
+                 llm = ChatOllama(
+                    model=settings.llm.model,
+                    temperature=0.3, # Slightly higher for creative analysis
+                    base_url=settings.llm.base_url
+                )
+        else:
+            llm = ChatOllama(
+                model=settings.llm.model,
+                temperature=0.3,  # Slightly higher for creative analysis
+                base_url=settings.llm.base_url
+            )
             
         # Use Async invoke
         response = await llm.ainvoke(prompt)

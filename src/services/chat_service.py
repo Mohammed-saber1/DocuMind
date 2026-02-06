@@ -40,11 +40,28 @@ class ChatService:
 
     def __init__(self):
         self.settings = get_settings()
-        self.llm = ChatOllama(
-            model=self.settings.llm.model,
-            temperature=self.settings.llm.temperature,
-            base_url=self.settings.llm.base_url
-        )
+        
+        if self.settings.llm.provider == "mistral":
+            try:
+                from langchain_mistralai import ChatMistralAI
+                self.llm = ChatMistralAI(
+                    model=self.settings.llm.model,
+                    temperature=self.settings.llm.temperature,
+                    mistral_api_key=self.settings.llm.api_key,
+                )
+            except ImportError:
+                logger.warning("langchain-mistralai not installed. Falling back to Ollama.")
+                self.llm = ChatOllama(
+                    model=self.settings.llm.model,
+                    temperature=self.settings.llm.temperature,
+                    base_url=self.settings.llm.base_url
+                )
+        else:
+            self.llm = ChatOllama(
+                model=self.settings.llm.model,
+                temperature=self.settings.llm.temperature,
+                base_url=self.settings.llm.base_url
+            )
         self.max_history = 10  # Keep last N conversation turns
 
     # ==================== Context Retrieval ====================
