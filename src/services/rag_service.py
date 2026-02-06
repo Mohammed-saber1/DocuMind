@@ -22,7 +22,7 @@ def get_embeddings():
     settings = get_settings()
     return OllamaEmbeddings(
         model=settings.llm.embedding_model,
-        base_url=settings.llm.base_url
+        base_url=settings.llm.embedding_base_url
     )
 
 def token_splitter_chunking(original_text: str, chunk_size: int = 512, chunk_overlap: int = 64) -> List[str]:

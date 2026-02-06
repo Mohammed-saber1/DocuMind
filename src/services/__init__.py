@@ -39,6 +39,10 @@ from services.vlm_service import (
     analyze_extracted_images,
     analyze_single_image
 )
+from services.cache_service import (
+    SemanticCache,
+    get_cache
+)
 
 __all__ = [
     # Chat
@@ -63,5 +67,8 @@ __all__ = [
     # VLM
     "analyze_extracted_images",
     "analyze_single_image",
+    # Cache
+    "SemanticCache",
+    "get_cache",
 ]
 

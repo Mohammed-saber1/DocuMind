@@ -13,7 +13,9 @@ Architecture follows the Controller -> Service -> Repository pattern.
 import os
 import json
 import logging
-from typing import List, Dict, Any, Optional, Generator
+import asyncio
+import time
+from typing import List, Dict, Any, Optional, Generator, AsyncGenerator
 from datetime import datetime
 
 from langchain_ollama import ChatOllama
@@ -26,6 +28,7 @@ from services.db_service import (
 )
 from core.config import get_settings
 from utils.file_utils import calculate_file_hash
+from services.cache_service import get_cache
 
 logger = logging.getLogger(__name__)
 
@@ -179,6 +182,11 @@ INSTRUCTIONS:
         """
         Process a chat message and return a response.
         
+        Optimized with:
+        - Semantic caching (Redis)
+        - Parallel context + history retrieval
+        - TTFT measurement
+        
         Args:
             message: User's message
             session_id: Session identifier for history tracking
@@ -189,16 +197,33 @@ INSTRUCTIONS:
         Returns:
             Dictionary with answer, sources, and session_id
         """
+        request_start = time.perf_counter()
         session_id = session_id or "default"
         logger.info(f"Chat request: '{message[:50]}...' (session={session_id}, source={source_id})")
         
-        # 1. Retrieve context from ChromaDB
-        context, sources = self.retrieve_context(message, k=k, session_id=session_id, source_id=source_id)
+        # 🚀 OPTIMIZATION 1: Check semantic cache first
+        cache = get_cache()
+        cached_response = cache.get_cached_response(message, source_id)
+        if cached_response:
+            latency = time.perf_counter() - request_start
+            logger.info(f"⚡ Cache hit! Response time: {latency:.3f}s")
+            cached_response["latency_ms"] = int(latency * 1000)
+            return cached_response
         
-        # 2. Get conversation history
-        history = ""
-        if use_history and session_id != "default":
-            history = self.format_history_for_prompt(session_id)
+        # 🚀 OPTIMIZATION 2: Parallel context + history retrieval
+        async def async_retrieve_context():
+            return self.retrieve_context(message, k=k, session_id=session_id, source_id=source_id)
+        
+        async def async_get_history():
+            if use_history and session_id != "default":
+                return self.format_history_for_prompt(session_id)
+            return ""
+        
+        # Run both in parallel
+        (context, sources), history = await asyncio.gather(
+            async_retrieve_context(),
+            async_get_history()
+        )
         
         # 3. Build prompt
         prompt = self.build_rag_prompt(message, context, history)
@@ -214,12 +239,22 @@ INSTRUCTIONS:
                 self.add_to_history(session_id, "user", message)
                 self.add_to_history(session_id, "assistant", answer)
             
-            return {
+            # Calculate latency
+            latency = time.perf_counter() - request_start
+            logger.info(f"📊 Response generated in {latency:.3f}s")
+            
+            result = {
                 "answer": answer,
                 "sources": sources,
                 "session_id": session_id,
-                "context_found": bool(context)
+                "context_found": bool(context),
+                "latency_ms": int(latency * 1000)
             }
+            
+            # 🚀 OPTIMIZATION 3: Cache the response for future queries
+            cache.cache_response(message, result, source_id)
+            
+            return result
             
         except Exception as e:
             logger.error(f"LLM error: {e}")

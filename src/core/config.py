@@ -53,6 +53,7 @@ class LLMSettings(BaseModel):
     embedding_model: str = "nomic-embed-text"
     temperature: float = 0.0
     base_url: str = "http://localhost:11434"
+    embedding_base_url: str = "http://localhost:11434"
 
 
 class VLMSettings(BaseModel):
@@ -116,7 +117,7 @@ class WorkerSettings(BaseModel):
     time_limit: int = 3660
     acks_late: bool = True
     reject_on_worker_lost: bool = True
-    backend_callback_url: str = "https://webhook.site/e0d97e11-776e-4ceb-a382-fe61e6558bea"
+    backend_callback_url: str = ""
 
 
 class Settings(BaseSettings):

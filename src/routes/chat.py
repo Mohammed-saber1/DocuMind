@@ -169,3 +169,33 @@ async def list_chat_sessions():
     return {"sessions": get_all_chat_sessions()}
 
 
+@chat_router.get("/cache/stats")
+async def get_cache_stats():
+    """
+    Get semantic cache statistics.
+    
+    Returns:
+        Cache stats including hit counts, cached responses, and TTL settings
+    """
+    from services.cache_service import get_cache
+    cache = get_cache()
+    return cache.get_stats()
+
+
+@chat_router.delete("/cache")
+async def clear_cache():
+    """
+    Clear all semantic cache entries.
+    
+    Use this when documents are updated and cached responses may be stale.
+    
+    Returns:
+        Number of cache entries deleted
+    """
+    from services.cache_service import get_cache
+    cache = get_cache()
+    deleted = cache.clear_all()
+    return {"success": True, "deleted_entries": deleted}
+
+
+

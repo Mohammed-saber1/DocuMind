@@ -28,7 +28,7 @@ class AsyncExtractionResponse(BaseModel):
     task_id: str
     session_id: str
     message: str
-backend_url = "https://webhook.site/e0d97e11-776e-4ceb-a382-fe61e6558bea"
+
 @extraction_router.post("/", response_model=AsyncExtractionResponse)
 async def extract_documents_async(
     files: Optional[List[UploadFile]] = File(None),

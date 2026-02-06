@@ -49,7 +49,7 @@ def extraction_task(self, task_payload: dict):
     }
     """
     session_id = task_payload.get("session_id")
-    callback_url = settings.worker.backend_callback_url
+    callback_url = task_payload.get("callback_url") or settings.worker.backend_callback_url
     
     # 🔧 Validate and Fix Callback URL early
     if not callback_url:

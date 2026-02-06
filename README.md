@@ -15,9 +15,11 @@ DocuMind is a powerful, production-ready document processing pipeline designed t
     *   **Web**: Scrape websites and process YouTube videos (transcription + meta-data).
 *   **Smart Vision Pipeline**:
     *   **Hybrid OCR/VLM**: Automatically detects if OCR is sufficient. If confidence is low or images are complex, it seamlessly falls back to Vision-Language Models (e.g., Mistral/Groq) for deep visual understanding.
-*   **RAG-Ready Indexing**: Automatically chunks and indexes extracted text into **ChromaDB** for instant semantic search and Q&A.
+*   **High-Performance RAG**:
+    *   **Semantic Caching**: Redis-based caching layer for instant responses to similar queries (exact & semantic match).
+    *   **Streaming Responses**: Interactive chat experience with Server-Sent Events (SSE).
+    *   **Optimized Indexing**: Automatically chunks and indexes extracted text into **ChromaDB**.
 *   **Structured Data Extraction**: Uses LLM Agents to parse raw text into clean, structured JSON schemas.
-*   **Chat with Data**: Built-in RAG Chatbot API to query your knowledge base with context-aware responses.
 *   **Scalable Architecture**: Built on **FastAPI** and **Celery** for asynchronous, distributed processing.
 
 ---
@@ -45,7 +47,7 @@ The system follows a modular **Controller-Service-Repository** pattern:
     *   Audio/Video is transcribed.
 4.  **Transformation**: The **Agent** structures the raw data.
 5.  **Indexing**: Data is saved to **MongoDB** and vector-indexed in **ChromaDB**.
-6.  **Retrieval**: The **Chat Service** uses the vector store to answer user queries.
+6.  **Retrieval**: The **Chat Service** uses the vector store and **Redis Semantic Cache** to answer user queries efficiently.
 
 ---
 
@@ -62,7 +64,7 @@ DocuMind/
 │   ├── models/         # Pydantic models & DB Schemas
 │   ├── pipeline/       # Main processing workflow
 │   ├── routes/         # API Endpoints
-│   ├── services/       # Business logic (Chat, OCR, DB, Memory)
+│   ├── services/       # Business logic (Chat, OCR, DB, Memory, Cache)
 │   ├── worker/         # Celery worker definitions
 │   └── main.py         # App Entry point
 ├── .env.example        # Environment variable template
@@ -80,6 +82,7 @@ DocuMind/
 *   **Docker & Docker Compose**
 *   **Ollama** (running locally for LLM/Embeddings)
 *   **MongoDB** (running locally or via Docker)
+*   **Redis** (running locally or via Docker)
 
 ### 1. Clone the Repository
 
@@ -93,14 +96,17 @@ cd documind
 Copy the example environment file and configure your keys:
 
 ```bash
-cp .env.example src/.env
+cp src/.env.example src/.env
 ```
 
-Edit `src/.env` to set your configuration (LLM model names, Database URLs, API Keys).
+Edit `src/.env` to set your configuration, especially:
+- `VLM__API_KEY` (if using Groq/Mistral)
+- `LLAMA_CLOUD_API_KEY` (if using LlamaCloud parsing)
+- `REDIS_*` settings
 
 ### 3. Start Dependencies (Docker)
 
-Use Docker Compose to start MongoDB and other infrastructure services:
+Use Docker Compose to start MongoDB, Redis, and other infrastructure services:
 
 ```bash
 docker-compose -f docker/docker-compose.yml up -d
@@ -133,6 +139,18 @@ celery -A worker.celery_app worker --loglevel=info -Q extraction_queue
 
 ---
 
+## 🔧 Troubleshooting
+
+### PaddleOCR & NumPy Compatibility
+If you encounter `module compiled against ABI version...` errors with PaddleOCR:
+- Ensure you are using a compatible NumPy version (< 2.0.0).
+- Run: `pip install "numpy<2.0"`
+
+### Redis Connection
+If caching fails, verify Redis is running on port 6380 (default in docker-compose) or update `src/.env`.
+
+---
+
 ## 🔌 API Documentation
 
 Once the server is running, access the interactive API docs at:
@@ -144,6 +162,7 @@ Once the server is running, access the interactive API docs at:
 
 *   `POST /api/v1/extract`: Upload a file or URL for processing.
 *   `POST /api/v1/chat`: Chat with your indexed documents.
+*   `POST /api/v1/chat/stream`: Stream chat responses (SSE).
 *   `GET /api/v1/documents`: List processed documents.
 
 ---
