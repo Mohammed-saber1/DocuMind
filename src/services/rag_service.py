@@ -8,14 +8,13 @@ from langchain_experimental.text_splitter import SemanticChunker
 from langchain_ollama import OllamaEmbeddings
 from langchain_text_splitters import TokenTextSplitter
 
+from core.config import get_settings
+
 load_dotenv()
 
 # Configure Logging
 logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)
-
-# Configuration
-from core.config import get_settings
 
 
 # Configuration
@@ -34,7 +33,8 @@ def token_splitter_chunking(
     Split text into token-based chunks using LangChain's TokenTextSplitter.
     """
     logger.info(
-        f"Splitting text with TokenTextSplitter (size={chunk_size}, overlap={chunk_overlap})"
+        f"Splitting text with TokenTextSplitter "
+        f"(size={chunk_size}, overlap={chunk_overlap})"
     )
     text_splitter = TokenTextSplitter(
         chunk_size=chunk_size, chunk_overlap=chunk_overlap
@@ -176,7 +176,8 @@ def create_enhanced_excel_summary(base_dir: str) -> str:
 
         if headers:
             summary_parts.append(
-                f"Sheet '{sheet_name}' contains {num_rows} rows with columns: {', '.join(headers)}"
+                f"Sheet '{sheet_name}' contains {num_rows} rows "
+                f"with columns: {', '.join(headers)}"
             )
 
     return "\n".join(summary_parts)

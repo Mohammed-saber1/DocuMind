@@ -3,12 +3,11 @@
 import json
 import logging
 import os
+from typing import Dict, List, Tuple
 
 # Suppress PaddlePaddle warnings (fscanf: Success [0])
 os.environ["GLOG_minloglevel"] = "2"
 os.environ["FLAGS_minloglevel"] = "2"
-
-from typing import Dict, List, Tuple
 
 # Configure logging
 logger = logging.getLogger(__name__)
@@ -33,10 +32,12 @@ def get_paddle_ocr():
             if use_gpu:
                 import paddle
 
-                # If compiled with CUDA but no device found, or not compiled with CUDA at all
+                # If compiled with CUDA but no device found,
+                # or not compiled with CUDA at all
                 if not paddle.device.is_compiled_with_cuda():
                     print(
-                        "⚠️ PaddlePaddle is not compiled with CUDA. Forcing use_gpu=False."
+                        "⚠️ PaddlePaddle not compiled with CUDA. "
+                        "Forcing use_gpu=False."
                     )
                     use_gpu = False
                 elif not paddle.device.get_available_device():
@@ -47,7 +48,8 @@ def get_paddle_ocr():
             # lang='en' default, but it supports multilingual.
             # We can use 'en' or specific configs. PaddleOCR auto-downloads models.
             print(
-                f"📦 Initializing PaddleOCR (use_gpu={use_gpu})... This may take a moment."
+                f"📦 Initializing PaddleOCR (use_gpu={use_gpu})... "
+                "This may take a moment."
             )
 
             try:
@@ -69,7 +71,7 @@ def get_paddle_ocr():
                     raise e
         except ImportError:
             print(
-                "❌ PaddleOCR not found. Please install: pip install paddleocr paddlepaddle"
+                "❌ PaddleOCR not found. Install: " "pip install paddleocr paddlepaddle"
             )
             return None
         except Exception as e:
@@ -151,8 +153,9 @@ def run_ocr_on_images(images: List[str]) -> List[Dict]:
     print(f"🧠 Running OCR on {len(images)} images...")
 
     # Create directory for OCR processed images
-    # NOTE: In a full pipeline context we'd want base_dir, but for now we infer it or leave as is.
-    # To keep functional purity, we just process here. The pipeline should handle organizing if needed,
+    # NOTE: In a full pipeline context we'd want base_dir, but for now
+    # we infer it or leave as is. To keep functional purity, we just
+    # process here. The pipeline should handle organizing if needed,
     # or we do it if we can infer parent.
 
     for img in images:
