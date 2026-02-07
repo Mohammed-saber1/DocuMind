@@ -252,10 +252,7 @@ def _call_vlm_api(
                 # Check dimensions (filter out tiny images < 50x50)
                 width, height = img.size
                 if width < 50 or height < 50:
-                    print(
-                        f"  ⚠️  Image too small ({width}x{height}), "
-                        "skipping analysis"
-                    )
+                    print(f"  ⚠️  Image too small ({width}x{height}), skip analysis")
                     return None
 
                 # Save to in-memory JPEG
