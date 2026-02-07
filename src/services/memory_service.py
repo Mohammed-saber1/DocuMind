@@ -2,11 +2,11 @@ import logging
 import os
 from typing import Any, Dict, List
 
+from core.config import get_settings
+
 # Configure Logging
 logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)
-
-from core.config import get_settings
 
 settings = get_settings()
 
@@ -82,7 +82,8 @@ def index_chunks(
 
     if truncated_count:
         logger.warning(
-            f"Truncated {truncated_count} oversized chunks to prevent embedding overflow"
+            f"Truncated {truncated_count} oversized chunks "
+            "to prevent embedding overflow"
         )
 
     if metadata and len(metadata) == len(safe_chunks):
@@ -112,7 +113,8 @@ def search_similar_chunks(
         source_id: Filter by source_id (optional)
     """
     logger.info(
-        f"Searching for similar chunks to: '{query[:50]}...' (k={k}, session={session_id}, source={source_id})"
+        f"Searching for similar chunks to: '{query[:50]}...' "
+        f"(k={k}, session={session_id}, source={source_id})"
     )
 
     try:
@@ -146,7 +148,8 @@ def search_similar_chunks(
             doc_session = doc.metadata.get("session_id", "none")
             doc_source_id = doc.metadata.get("source_id", "none")
             logger.info(
-                f"  Result {i+1}: source={source}, session={doc_session}, source_id={doc_source_id}"
+                f"  Result {i+1}: source={source}, "
+                f"session={doc_session}, source_id={doc_source_id}"
             )
 
         return results
@@ -155,10 +158,12 @@ def search_similar_chunks(
         error_msg = str(e)
         logger.error(f"Error in search_similar_chunks: {error_msg}")
 
-        # Retry mechanism for specific ChromaDB errors that might be fixed by client refresh
+        # Retry mechanism for specific ChromaDB errors
+        # that might be fixed by client refresh
         if "Error finding id" in error_msg or "sqlite" in error_msg.lower():
             logger.warning(
-                "Encountered potential stale connection/index error. Invaliding cache and retrying..."
+                "Encountered potential stale connection/index error. "
+                "Invaliding cache and retrying..."
             )
 
             # Invalidate cache for this collection
@@ -214,8 +219,9 @@ def check_hash_exists(
 
 def get_chunks_by_hash(file_hash: str, collection_name: str = "global_memory") -> dict:
     """
-    Retrieve UNIQUE chunks and metadata for a specific file hash from ChromaDB.
-    Only returns chunks from the FIRST session that indexed this file to avoid duplicates.
+    Retrieve UNIQUE chunks and metadata for a specific file hash.
+    Only returns chunks from the FIRST session that indexed this file
+    to avoid duplicates.
     """
     try:
         vectorstore = get_chroma_client(collection_name)
@@ -247,7 +253,8 @@ def get_chunks_by_hash(file_hash: str, collection_name: str = "global_memory") -
                 unique_ids.append(all_ids[i])
 
         logger.info(
-            f"Found {len(all_chunks)} total chunks, returning {len(unique_chunks)} unique (from session {first_session})"
+            f"Found {len(all_chunks)} total chunks, "
+            f"returning {len(unique_chunks)} unique (from session {first_session})"
         )
 
         return {"chunks": unique_chunks, "metadata": unique_metadata, "ids": unique_ids}
