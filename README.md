@@ -142,9 +142,11 @@ celery -A worker.celery_app worker --loglevel=info -Q extraction_queue
 ## 🔧 Troubleshooting
 
 ### PaddleOCR & NumPy Compatibility
-If you encounter `module compiled against ABI version...` errors with PaddleOCR:
-- Ensure you are using a compatible NumPy version (< 2.0.0).
-- Run: `pip install "numpy<2.0"`
+If you encounter `module compiled against ABI version...` or `Segmentation fault` errors:
+- Ensure you are using **`paddlepaddle` (CPU)** if no GPU is available, or `paddlepaddle-gpu` only if you have a supported GPU.
+- Ensure NumPy is pinned to `< 2.0.0` (e.g., `1.26.4`).
+- For OpenCV errors (`AttributeError: module 'cv2' has no attribute 'INTER_NEAREST'`), use `opencv-python-headless` version `4.10.0.84`.
+- The project `requirements.txt` is already pinned to these working versions.
 
 ### Redis Connection
 If caching fails, verify Redis is running on port 6380 (default in docker-compose) or update `src/.env`.

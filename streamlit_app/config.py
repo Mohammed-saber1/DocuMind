@@ -13,7 +13,7 @@ CHAT_STREAM_ENDPOINT = f"{API_BASE_URL}/chat/stream"
 
 # Hidden Defaults (not exposed in UI)
 DEFAULT_OCR_VLM = True
-DEFAULT_K = 3
+DEFAULT_K = 8
 
 # Supported File Types
 SUPPORTED_FILES = {

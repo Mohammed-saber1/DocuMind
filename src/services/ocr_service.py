@@ -27,17 +27,42 @@ def get_paddle_ocr():
             settings = get_settings()
             use_gpu = settings.ocr.gpu
             
+            # Check compatible devices
+            if use_gpu:
+                import paddle
+                # If compiled with CUDA but no device found, or not compiled with CUDA at all
+                if not paddle.device.is_compiled_with_cuda():
+                    print("⚠️ PaddlePaddle is not compiled with CUDA. Forcing use_gpu=False.")
+                    use_gpu = False
+                elif not paddle.device.get_available_device():
+                    print("⚠️ No GPU devices found. Forcing use_gpu=False.")
+                    use_gpu = False
+
             # Initialize PaddleOCR
             # lang='en' default, but it supports multilingual. 
             # We can use 'en' or specific configs. PaddleOCR auto-downloads models.
-            print(f"📦 Initializing PaddleOCR (GPU={use_gpu})... This may take a moment.")
-            _PADDLE_OCR = PaddleOCR(
-                use_angle_cls=True, 
-                lang='en',  # Default language
-                use_gpu=use_gpu,
-                show_log=False
-            )
-            print("✅ PaddleOCR initialized")
+            print(f"📦 Initializing PaddleOCR (use_gpu={use_gpu})... This may take a moment.")
+            
+            try:
+                _PADDLE_OCR = PaddleOCR(
+                    use_angle_cls=True, 
+                    lang='en',  # Default language
+                    use_gpu=use_gpu,
+                    show_log=False
+                )
+                print("✅ PaddleOCR initialized")
+            except Exception as e:
+                if use_gpu:
+                    print(f"⚠️ GPU initialization failed: {e}. Falling back to CPU.")
+                    _PADDLE_OCR = PaddleOCR(
+                        use_angle_cls=True, 
+                        lang='en', 
+                        use_gpu=False,
+                        show_log=False
+                    )
+                    print("✅ PaddleOCR initialized (CPU mode)")
+                else:
+                    raise e
         except ImportError:
             print("❌ PaddleOCR not found. Please install: pip install paddleocr paddlepaddle")
             return None

@@ -1,416 +1,391 @@
 """
-DocuMind Streamlit Application 🧠
-==================================
+DocuMind 🧠 - Enterprise Document Intelligence Platform
+=======================================================
 
-A modern document ingestion and chat interface using native Streamlit components.
-
-Features:
-- Multi-modal document upload (PDF, PPT, Word, TXT, images, audio, video)
-- URL ingestion (Website, YouTube)
-- Streaming chat interface
-- Automatic session management
-
-Run with:
-    streamlit run app.py
+Production-ready single-page Streamlit application.
 """
 import streamlit as st
 import uuid
-import time
 
-# Import local modules
-from config import (
-    ALL_EXTENSIONS,
-    SUPPORTED_FILES,
-    URL_TYPES,
-    DEFAULT_K,
-    DEFAULT_OCR_VLM
-)
-from api_service import (
-    submit_extraction,
-    send_chat_message,
-    stream_chat_response
-)
-from components import (
-    render_header,
-    render_file_uploader,
-    render_url_inputs,
-    render_metadata_form,
-    render_success_state,
-    render_sidebar_session_info,
-    render_empty_state
-)
+from config import ALL_EXTENSIONS, SUPPORTED_FILES, DEFAULT_K
+from api_service import submit_extraction, send_chat_message, stream_chat_response
 
-# --- Page Configuration ---
+# ============================================================================
+# PAGE CONFIG
+# ============================================================================
 st.set_page_config(
     page_title="DocuMind 🧠",
     page_icon="🧠",
-    layout="centered",
-    initial_sidebar_state="expanded"
+    layout="wide",
+    initial_sidebar_state="collapsed"
 )
 
-
-def init_session_state():
-    """Initialize all session state variables."""
+# ============================================================================
+# SESSION STATE
+# ============================================================================
+def init_session():
     defaults = {
         "session_id": str(uuid.uuid4()),
-        "app_stage": "upload",  # upload, processing, chat
-        "selected_modalities": [],
-        "uploaded_files": [],
-        "urls": [],
+        "stage": "input",
+        "files": [],
+        "website_url": "",
+        "youtube_url": "",
         "author": "",
         "description": "",
-        "processing_status": "idle",  # idle, processing, ready
+        "selected_types": set(),
         "chat_history": [],
+        "sources": [],
         "doc_count": 0,
-        "task_id": None
+        "processing": False,
+        "all_files": set()
     }
-    
-    for key, default in defaults.items():
-        if key not in st.session_state:
-            st.session_state[key] = default
+    for k, v in defaults.items():
+        if k not in st.session_state:
+            st.session_state[k] = v
 
 
-def reset_session():
-    """Reset to a new session."""
-    st.session_state.session_id = str(uuid.uuid4())
-    st.session_state.app_stage = "upload"
-    st.session_state.selected_modalities = []
-    st.session_state.uploaded_files = []
-    st.session_state.urls = []
-    st.session_state.author = ""
-    st.session_state.description = ""
-    st.session_state.processing_status = "idle"
-    st.session_state.chat_history = []
-    st.session_state.doc_count = 0
-    st.session_state.task_id = None
+def reset():
+    for k in list(st.session_state.keys()):
+        del st.session_state[k]
+    init_session()
     st.rerun()
 
 
-def render_upload_section():
-    """Render the document upload interface."""
-    render_header()
+# ============================================================================
+# UI COMPONENTS
+# ============================================================================
+
+def render_header():
+    """Professional header."""
+    st.title("DocuMind 🧠")
+    st.markdown("### Intelligent Document Extraction & Intelligence Platform")
+
+
+def render_input_types():
+    """Input type selection grid."""
+    st.markdown("#### 📂 Select Input Types")
     
-    # --- Input Type Selection ---
-    st.subheader("📤 Select Input Types")
+    types = [
+        ("website", "🌐", "Website"),
+        ("youtube", "▶️", "YouTube"),
+        ("pdf", "📄", "PDF"),
+        ("ppt", "📊", "PPT"),
+        ("word", "📝", "Word"),
+        ("txt", "📃", "TXT"),
+        ("image", "🖼️", "Images"),
+        ("audio", "🎧", "Audio"),
+        ("video", "🎬", "Video"),
+    ]
     
-    # File type toggles
-    st.markdown("**Files:**")
-    file_cols = st.columns(len(SUPPORTED_FILES))
-    for i, (key, data) in enumerate(SUPPORTED_FILES.items()):
-        with file_cols[i]:
-            is_selected = key in st.session_state.selected_modalities
-            if st.checkbox(f"{data['icon']}", value=is_selected, key=f"mod_{key}", help=data['label']):
-                if key not in st.session_state.selected_modalities:
-                    st.session_state.selected_modalities.append(key)
-            else:
-                if key in st.session_state.selected_modalities:
-                    st.session_state.selected_modalities.remove(key)
-    
-    # Labels below checkboxes
-    label_cols = st.columns(len(SUPPORTED_FILES))
-    for i, (key, data) in enumerate(SUPPORTED_FILES.items()):
-        with label_cols[i]:
-            st.caption(data['label'])
-    
-    st.markdown("")
-    
-    # URL type toggles
-    st.markdown("**URLs:**")
-    url_cols = st.columns(2)
-    for i, (key, data) in enumerate(URL_TYPES.items()):
-        with url_cols[i]:
-            is_selected = key in st.session_state.selected_modalities
-            if st.checkbox(f"{data['icon']} {data['label']}", value=is_selected, key=f"url_{key}"):
-                if key not in st.session_state.selected_modalities:
-                    st.session_state.selected_modalities.append(key)
-            else:
-                if key in st.session_state.selected_modalities:
-                    st.session_state.selected_modalities.remove(key)
-    
-    st.divider()
-    
-    # --- Upload Section ---
-    has_file_modality = any(m in SUPPORTED_FILES for m in st.session_state.selected_modalities)
-    has_website = "website" in st.session_state.selected_modalities
-    has_youtube = "youtube" in st.session_state.selected_modalities
-    
-    # Get allowed extensions based on selected modalities
-    allowed_extensions = []
-    for mod in st.session_state.selected_modalities:
-        if mod in SUPPORTED_FILES:
-            allowed_extensions.extend(SUPPORTED_FILES[mod]["extensions"])
-    
-    # File uploader
-    uploaded_files = []
-    if has_file_modality:
-        st.subheader("📁 Upload Files")
-        uploaded_files = st.file_uploader(
-            "Drop files here or click to browse",
-            type=allowed_extensions if allowed_extensions else ALL_EXTENSIONS,
-            accept_multiple_files=True,
-            key="file_uploader",
-            label_visibility="collapsed"
-        )
-        
-        if uploaded_files:
-            st.success(f"✓ {len(uploaded_files)} file(s) selected")
-    
-    # URL inputs
-    urls = []
-    if has_website:
-        st.subheader("🌐 Website URL")
-        website_url = st.text_input(
-            "Website URL",
-            placeholder="https://example.com/article",
-            key="website_url_input",
-            label_visibility="collapsed"
-        )
-        if website_url:
-            urls.append(website_url)
-            
-    if has_youtube:
-        st.subheader("▶️ YouTube URL")
-        youtube_url = st.text_input(
-            "YouTube URL",
-            placeholder="https://youtube.com/watch?v=...",
-            key="youtube_url_input",
-            label_visibility="collapsed"
-        )
-        if youtube_url:
-            urls.append(youtube_url)
-    
-    # Show placeholder if nothing selected
-    if not st.session_state.selected_modalities:
-        render_empty_state("👆", "Select input types above to get started")
-    
-    st.divider()
-    
-    # --- Metadata Section ---
-    st.subheader("📋 Document Information")
-    
-    col1, col2 = st.columns([1, 1])
-    with col1:
-        author = st.text_input(
-            "Author Name *",
-            placeholder="Your name",
-            key="author_input"
-        )
-    
-    description = st.text_area(
-        "Description (optional)",
-        placeholder="Brief description of the documents...",
-        height=80,
-        key="description_input"
-    )
-    
-    st.divider()
-    
-    # --- Submit Button ---
-    can_submit = (uploaded_files or urls) and author
-    
-    col1, col2, col3 = st.columns([1, 2, 1])
-    with col2:
-        if st.button(
-            "🚀 Process Documents",
-            use_container_width=True,
-            disabled=not can_submit,
-            type="primary"
-        ):
-            if not author:
-                st.error("Please enter your name")
-            elif not (uploaded_files or urls):
-                st.error("Please upload files or enter URLs")
-            else:
-                # Store data and transition to processing
-                st.session_state.uploaded_files = uploaded_files
-                st.session_state.urls = urls
-                st.session_state.author = author
-                st.session_state.description = description
-                st.session_state.app_stage = "processing"
-                st.session_state.processing_status = "processing"
+    cols = st.columns(9)
+    for i, (key, icon, label) in enumerate(types):
+        with cols[i]:
+            active = key in st.session_state.selected_types
+            btn_type = "primary" if active else "secondary"
+            if st.button(f"{icon}\n{label}", key=f"type_{key}", use_container_width=True, type=btn_type):
+                if active:
+                    st.session_state.selected_types.discard(key)
+                else:
+                    st.session_state.selected_types.add(key)
                 st.rerun()
-    
-    if not can_submit:
-        st.caption("Add content and your name to continue")
 
 
-def render_processing_section():
-    """Render the processing state."""
-    render_header()
+def render_metadata():
+    """Author and description inputs."""
+    st.markdown("#### 👤 Document Information")
     
-    col1, col2, col3 = st.columns([1, 2, 1])
+    col1, col2 = st.columns([1, 2])
+    with col1:
+        author = st.text_input("Author Name *", placeholder="Enter your name", key="author_in", disabled=st.session_state.processing)
+        st.session_state.author = author
     with col2:
-        st.markdown("### 🧠")
-        st.markdown("**Extracting intelligence...**")
-    
-    progress_bar = st.progress(0)
-    status_text = st.empty()
-    
-    # Submit to backend
-    status_text.text("Connecting to backend...")
-    progress_bar.progress(20)
-    
-    response = submit_extraction(
-        files=st.session_state.uploaded_files,
-        links=st.session_state.urls,
-        session_id=st.session_state.session_id,
-        author=st.session_state.author,
-        description=st.session_state.description
-    )
-    
-    progress_bar.progress(80)
-    
-    if response.get("error"):
-        progress_bar.empty()
-        status_text.empty()
-        st.error(f"❌ Processing failed: {response.get('message', 'Unknown error')}")
-        if st.button("← Back to Upload"):
-            st.session_state.app_stage = "upload"
-            st.session_state.processing_status = "idle"
-            st.rerun()
-    else:
-        progress_bar.progress(100)
-        status_text.text("Processing complete!")
-        
-        # Store task info
-        st.session_state.task_id = response.get("task_id")
-        
-        # Count documents
-        file_count = len(st.session_state.uploaded_files)
-        url_count = len(st.session_state.urls)
-        st.session_state.doc_count = file_count + url_count
-        
-        # Show success
-        render_success_state()
-        
-        st.toast("✅ Documents processed successfully!", icon="🎉")
-        
-        # Transition to chat after brief delay
-        time.sleep(1.5)
-        st.session_state.app_stage = "chat"
-        st.session_state.processing_status = "ready"
-        st.rerun()
+        desc = st.text_area("Description (Optional)", placeholder="Brief description...", height=80, key="desc_in", disabled=st.session_state.processing)
+        st.session_state.description = desc
 
 
-def render_chat_section():
-    """Render the chat interface."""
-    # Header
-    st.markdown("## 💬 Chat with Your Documents")
-    st.caption("Ask questions about your uploaded content")
-    st.divider()
+def render_url_inputs():
+    """URL input fields."""
+    selected = st.session_state.selected_types
     
-    # Chat history
-    if not st.session_state.chat_history:
-        render_empty_state("💭", "Start a conversation by asking a question below")
-    else:
-        for message in st.session_state.chat_history:
-            avatar = "👤" if message["role"] == "user" else "🧠"
-            with st.chat_message(message["role"], avatar=avatar):
-                st.markdown(message["content"])
+    if "website" in selected or "youtube" in selected:
+        st.markdown("#### 🔗 URLs")
+        col1, col2 = st.columns(2)
+        
+        if "website" in selected:
+            with col1:
+                url = st.text_input("🌐 Website URL", placeholder="https://example.com", key="web_in", disabled=st.session_state.processing)
+                st.session_state.website_url = url
+        
+        if "youtube" in selected:
+            with col2:
+                url = st.text_input("▶️ YouTube URL", placeholder="https://youtube.com/watch?v=...", key="yt_in", disabled=st.session_state.processing)
+                st.session_state.youtube_url = url
+
+
+def render_file_upload():
+    """File upload section."""
+    file_types = {"pdf", "ppt", "word", "txt", "image", "audio", "video"}
+    active_files = st.session_state.selected_types & file_types
     
-    # Chat input
-    if prompt := st.chat_input("Ask a question about your documents..."):
-        # Add user message
-        st.session_state.chat_history.append({
-            "role": "user",
-            "content": prompt
-        })
+    if active_files:
+        st.markdown("#### 📁 Upload Files")
         
-        # Display user message
-        with st.chat_message("user", avatar="👤"):
-            st.markdown(prompt)
+        # Build extensions
+        exts = []
+        for ft in active_files:
+            if ft in SUPPORTED_FILES:
+                exts.extend(SUPPORTED_FILES[ft]["extensions"])
         
-        # Get AI response with streaming
-        with st.chat_message("assistant", avatar="🧠"):
-            message_placeholder = st.empty()
-            full_response = ""
-            
-            # Show thinking
-            message_placeholder.markdown("*Thinking...*")
-            
-            # Try streaming first, fallback to regular chat
-            try:
-                for token in stream_chat_response(
-                    message=prompt,
-                    session_id=st.session_state.session_id,
-                    k=DEFAULT_K,
-                    use_history=True
-                ):
-                    full_response += token
-                    message_placeholder.markdown(full_response + "▌")
-                
-                message_placeholder.markdown(full_response)
-                
-            except Exception as e:
-                # Fallback to non-streaming
-                response = send_chat_message(
-                    message=prompt,
-                    session_id=st.session_state.session_id,
-                    k=DEFAULT_K,
-                    use_history=True
-                )
-                full_response = response.get("answer", "Sorry, I couldn't generate a response.")
-                message_placeholder.markdown(full_response)
+        files = st.file_uploader(
+            "Drop files here",
+            type=exts or ALL_EXTENSIONS,
+            accept_multiple_files=True,
+            key="upload",
+            label_visibility="collapsed",
+            disabled=st.session_state.processing
+        )
         
-        # Add assistant message to history
-        st.session_state.chat_history.append({
-            "role": "assistant",
-            "content": full_response
-        })
+        if files:
+            st.session_state.files = files
+            with st.expander(f"✅ {len(files)} file(s) selected"):
+                for f in files:
+                    ext = f.name.split(".")[-1].lower()
+                    icon = "📄"
+                    for ft, d in SUPPORTED_FILES.items():
+                        if ext in d["extensions"]:
+                            icon = d["icon"]
+                            break
+                    st.write(f"{icon} {f.name}")
+
+
+def render_submit():
+    """Submit button."""
+    urls = []
+    if st.session_state.website_url:
+        urls.append(st.session_state.website_url)
+    if st.session_state.youtube_url:
+        urls.append(st.session_state.youtube_url)
     
-    # Back to upload option
-    st.markdown("")
+    can_submit = (st.session_state.files or urls) and st.session_state.author and not st.session_state.processing
+    
+    st.markdown("---")
     col1, col2, col3 = st.columns([1, 1, 1])
     with col2:
-        if st.button("📤 Upload More Documents", use_container_width=True):
-            st.session_state.app_stage = "upload"
-            st.session_state.processing_status = "idle"
+        if st.button("🚀 Submit & Process", use_container_width=True, disabled=not can_submit, type="primary"):
+            st.session_state.processing = True
+            st.session_state.stage = "processing"
+            st.rerun()
+    
+    if not can_submit and st.session_state.selected_types:
+        if not st.session_state.author:
+            st.caption("⚠️ Enter your name to continue")
+        elif not (st.session_state.files or urls):
+            st.caption("⚠️ Upload files or add URLs")
+
+
+def render_processing():
+    """Processing screen."""
+    col1, col2, col3 = st.columns([1, 2, 1])
+    with col2:
+        st.markdown("### ⏳ Processing Documents...")
+        
+        with st.spinner("Extracting intelligence..."):
+            urls = []
+            if st.session_state.website_url:
+                urls.append(st.session_state.website_url)
+            if st.session_state.youtube_url:
+                urls.append(st.session_state.youtube_url)
+            
+            response = submit_extraction(
+                files=st.session_state.files,
+                links=urls,
+                session_id=st.session_state.session_id,
+                author=st.session_state.author,
+                description=st.session_state.description
+            )
+        
+        if response.get("error"):
+            st.error(f"❌ {response.get('message', 'Failed')}")
+            st.session_state.processing = False
+            st.session_state.stage = "input"
+            if st.button("← Try Again"):
+                st.rerun()
+        else:
+            st.session_state.doc_count += len(st.session_state.files) + len(urls)
+            
+            # Track all files for sidebar
+            for f in st.session_state.files:
+                st.session_state.all_files.add(f.name)
+            if st.session_state.website_url:
+                st.session_state.all_files.add(st.session_state.website_url)
+            if st.session_state.youtube_url:
+                st.session_state.all_files.add(st.session_state.youtube_url)
+                
+            st.success(f"✅ {st.session_state.doc_count} documents indexed")
+            st.session_state.stage = "chat"
+            st.session_state.processing = False
             st.rerun()
 
 
-def render_sidebar():
-    """Render the sidebar with session info."""
-    should_reset = render_sidebar_session_info(
-        session_id=st.session_state.session_id,
-        status=st.session_state.processing_status,
-        doc_count=st.session_state.doc_count
-    )
+
+
+
+
+def render_chat():
+    """Chat interface with sources."""
+    # Layout: Chat (left) | Sources (right)
+    chat_col, source_col = st.columns([2, 1])
     
-    if should_reset:
-        reset_session()
-    
-    # About section
-    with st.sidebar:
-        st.divider()
-        st.subheader("About DocuMind")
-        st.caption(
-            "Transform unstructured documents into an intelligent knowledge base "
-            "you can chat with."
-        )
+    with chat_col:
+        st.markdown("### 💬 Chat with Your Documents")
+        st.caption(f"📄 {st.session_state.doc_count} documents indexed")
         
-        st.markdown("""
-**Supported formats:**
-- 📄 PDF, 📊 PPT, 📝 Word, 📃 TXT
-- 🖼️ Images, 🎧 Audio, 🎬 Video
-- 🌐 Websites, ▶️ YouTube
-        """)
+        # Chat container
+        container = st.container(height=450)
+        with container:
+            if not st.session_state.chat_history:
+                st.markdown("")
+                st.info("💡 Ask any question about your uploaded documents")
+            else:
+                for msg in st.session_state.chat_history:
+                    avatar = "👤" if msg["role"] == "user" else "🧠"
+                    with st.chat_message(msg["role"], avatar=avatar):
+                        content = msg["content"]
+                        st.write(content)
+        
+        # Input
+        if prompt := st.chat_input("Ask a question..."):
+            st.session_state.chat_history.append({"role": "user", "content": prompt})
+            
+            with container:
+                with st.chat_message("user", avatar="👤"):
+                    st.markdown(prompt)
+                
+                with st.chat_message("assistant", avatar="🧠"):
+                    placeholder = st.empty()
+                    response_text = ""
+                    placeholder.markdown("Thinking...")
+                    
+                    try:
+                        response_text = ""
+                        placeholder.markdown("Thinking...")
+                        
+                        for_loop = stream_chat_response(
+                            message=prompt,
+                            session_id=st.session_state.session_id,
+                            k=DEFAULT_K,
+                            use_history=True
+                        )
+                        
+                        for token in for_loop:
+                            response_text += token
+                            # Real-time formatting for better UX
+                            formatted_live = response_text
+                            placeholder.empty()
+                            placeholder.markdown(formatted_live + "▌")
+                            
+                        # Final render
+                        formatted_final = response_text
+                        placeholder.write(formatted_final)
+                        response_text = formatted_final
+                        
+                    except Exception:
+                        resp = send_chat_message(prompt, st.session_state.session_id, DEFAULT_K, True)
+                        raw_response = resp.get("answer", "Unable to respond.")
+                        response_text = raw_response
+                        placeholder.write(response_text)
+                        if resp.get("sources"):
+                            st.session_state.sources = resp["sources"]
+            
+            st.session_state.chat_history.append({"role": "assistant", "content": response_text})
+            st.rerun()
+    
+    with source_col:
+        st.markdown("### 📚 Sources")
+        
+        if st.session_state.sources:
+            for i, src in enumerate(st.session_state.sources, 1):
+                with st.expander(f"Source {i}"):
+                    st.markdown(src.get("content", "")[:250] + "...")
+        else:
+            st.caption("Sources appear as you chat")
+            st.markdown("---")
+            st.markdown("**📁 All Documents:**")
+            
+            # Extract source filenames from active sources
+            # Sources typically have metadata with 'source' key
+            active_sources = set()
+            if st.session_state.sources:
+                for s in st.session_state.sources:
+                    if "metadata" in s:
+                        active_sources.add(s["metadata"].get("source"))
+                    elif "source" in s:
+                        active_sources.add(s.get("source"))
+
+            for f_name in sorted(list(st.session_state.all_files)):
+                if any(src and f_name in src for src in active_sources):
+                    st.success(f"📄 {f_name}")
+                else:
+                    st.write(f"📄 {f_name}")
+        
+        
+        st.markdown("---")
+        if st.button("➕ Add More Documents", use_container_width=True):
+            st.session_state.files = []
+            st.session_state.website_url = ""
+            st.session_state.youtube_url = ""
+            st.session_state.stage = "input"
+            if "upload" in st.session_state:
+                del st.session_state["upload"]
+            st.rerun()
+
+        if st.button("🔄 New Session", use_container_width=True):
+            reset()
 
 
+# ============================================================================
+# MAIN
+# ============================================================================
 def main():
-    """Main application entry point."""
-    # Initialize session state
-    init_session_state()
+    init_session()
+    render_header()
     
-    # Render sidebar
-    render_sidebar()
+    if st.session_state.stage == "input":
+        st.markdown("---")
+        
+        # Section 1: Input Types
+        with st.container():
+            render_input_types()
+        
+        if st.session_state.selected_types:
+            st.markdown("")
+            
+            # Section 2: Metadata
+            with st.container():
+                render_metadata()
+            
+            st.markdown("")
+            
+            # Section 3: URLs
+            with st.container():
+                render_url_inputs()
+            
+            st.markdown("")
+            
+            # Section 4: Files
+            with st.container():
+                render_file_upload()
+            
+            # Submit
+            render_submit()
     
-    # Route based on app stage
-    if st.session_state.app_stage == "upload":
-        render_upload_section()
-    elif st.session_state.app_stage == "processing":
-        render_processing_section()
-    elif st.session_state.app_stage == "chat":
-        render_chat_section()
+    elif st.session_state.stage == "processing":
+        st.markdown("---")
+        render_processing()
+    
+    elif st.session_state.stage == "chat":
+        st.markdown("---")
+        render_chat()
 
 
 if __name__ == "__main__":
