@@ -1,12 +1,13 @@
-import os
 import json
 import logging
-from typing import List, Dict, Any, Optional
+import os
+from typing import Any, Dict, List, Optional
+
 from langchain_ollama import ChatOllama
 from pydantic import BaseModel, Field
 
-from utils.text_utils import preprocess_text, sanitize_for_json, extract_json
 from core.config import get_settings
+from utils.text_utils import extract_json, preprocess_text, sanitize_for_json
 
 # Configure Logging
 logger = logging.getLogger(__name__)

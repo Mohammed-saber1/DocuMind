@@ -1,7 +1,8 @@
+import logging
 import os
 import sys
-import logging
-from typing import List, Dict, Any
+from typing import Any, Dict, List
+
 from langchain_chroma import Chroma
 
 # Configure Logging

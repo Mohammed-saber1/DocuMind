@@ -17,14 +17,16 @@ It is primarily called by the `document_pipeline` when `run_ocr_on_images` indic
 failure or low confidence.
 """
 
-import os
-import json
 import base64
 import io
-from PIL import Image
-import requests
-from core.config import get_settings
+import json
+import os
 from typing import Dict, List, Optional
+
+import requests
+from PIL import Image
+
+from core.config import get_settings
 
 # Prompt used to guide the VLM's analysis
 VLM_PROMPT = "Describe this image in detail. If it contains text, transcribe it. If it is a chart or graph, summarize the key trends."

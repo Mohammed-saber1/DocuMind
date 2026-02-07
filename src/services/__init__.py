@@ -12,14 +12,14 @@ This module provides core services for the document extraction pipeline:
 - chat_service: Chat functionality with RAG and conversation history
 """
 
+from services.cache_service import SemanticCache, get_cache
 from services.chat_service import ChatService, get_chat_service
-from services.db_service import get_db_client, save_to_mongodb, save_batch_to_mongodb
-from services.llm_service import run_agent, analyze_tables_with_llm
-from services.memory_service import index_chunks, check_hash_exists
-from services.ocr_service import run_ocr_on_images, should_use_ocr, maybe_run_ocr
+from services.db_service import get_db_client, save_batch_to_mongodb, save_to_mongodb
+from services.llm_service import analyze_tables_with_llm, run_agent
+from services.memory_service import check_hash_exists, index_chunks
+from services.ocr_service import maybe_run_ocr, run_ocr_on_images, should_use_ocr
 from services.rag_service import process_document_for_rag
 from services.vlm_service import analyze_extracted_images, analyze_single_image
-from services.cache_service import SemanticCache, get_cache
 
 __all__ = [
     # Chat

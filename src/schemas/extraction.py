@@ -1,7 +1,8 @@
 """Pydantic schemas for extraction routes."""
 
-from pydantic import BaseModel
 from typing import List, Optional
+
+from pydantic import BaseModel
 
 
 class DocumentStatus(BaseModel):

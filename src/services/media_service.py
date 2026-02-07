@@ -10,11 +10,11 @@ Handles audio/video processing for the DocuMind extraction pipeline:
 All transcribed content is returned in a format compatible with the document pipeline.
 """
 
-import os
-import uuid
-import tempfile
-import logging
 import csv
+import logging
+import os
+import tempfile
+import uuid
 import warnings
 from dataclasses import dataclass
 from typing import Optional
@@ -54,9 +54,10 @@ def get_whisper_model(model_size: str = "small", force_cpu: bool = False):
     global _whisper_model
     if _whisper_model is None:
         try:
-            import whisper
-            import torch
             import multiprocessing
+
+            import torch
+            import whisper
 
             # Detect if we're in a forked process (Celery worker)
             is_forked = multiprocessing.current_process().name != "MainProcess"

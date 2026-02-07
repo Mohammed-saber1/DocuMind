@@ -1,23 +1,24 @@
 """Excel and CSV file extractor."""
 
+import csv
+import json
 import os
 import re
-import json
-import csv
+
 import openpyxl
 import xlrd
 
 from utils.file_utils import (
     create_document_folder,
-    save_text,
     save_metadata,
     save_tables,
+    save_text,
 )
 from utils.table_utils import (
-    preprocess_excel_data,
     clean_numeric_values,
-    format_table_as_markdown,
     detect_numeric_columns,
+    format_table_as_markdown,
+    preprocess_excel_data,
 )
 
 

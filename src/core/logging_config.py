@@ -6,9 +6,9 @@ Provides JSON-formatted logging suitable for production environments
 and log aggregation systems (ELK, CloudWatch, etc.).
 """
 
+import json
 import logging
 import sys
-import json
 from datetime import datetime
 from typing import Any
 

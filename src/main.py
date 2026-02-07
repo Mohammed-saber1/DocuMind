@@ -22,11 +22,12 @@ Or using uvicorn:
     $ uvicorn src.main:app --reload
 """
 
-from fastapi import FastAPI
 from contextlib import asynccontextmanager
 
+from fastapi import FastAPI
+
 from core.config import get_settings
-from routes import base_router, extraction_router, chat_router, documents_router
+from routes import base_router, chat_router, documents_router, extraction_router
 
 
 @asynccontextmanager

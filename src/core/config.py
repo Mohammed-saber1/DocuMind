@@ -4,8 +4,9 @@ Centralized configuration using Pydantic Settings.
 Organized into nested models for better structure and type safety.
 """
 
-from typing import List
 from functools import lru_cache
+from typing import List
+
 from pydantic import BaseModel
 from pydantic_settings import BaseSettings, SettingsConfigDict
 

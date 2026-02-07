@@ -1,10 +1,12 @@
-import os
 import asyncio
-import httpx
 import logging
-from worker.celery_app import celery_app
+import os
+
+import httpx
+
 from controllers.extraction_controller import ExtractionController
 from core.config import get_settings
+from worker.celery_app import celery_app
 
 # Configure logging
 logging.basicConfig(level=logging.INFO)

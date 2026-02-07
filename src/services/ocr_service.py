@@ -1,14 +1,14 @@
 """OCR service for image-based text extraction using PaddleOCR."""
 
-import os
 import json
 import logging
+import os
 
 # Suppress PaddlePaddle warnings (fscanf: Success [0])
 os.environ["GLOG_minloglevel"] = "2"
 os.environ["FLAGS_minloglevel"] = "2"
 
-from typing import List, Dict, Tuple, Optional
+from typing import Dict, List, Optional, Tuple
 
 # Configure logging
 logger = logging.getLogger(__name__)
@@ -23,6 +23,7 @@ def get_paddle_ocr():
     if _PADDLE_OCR is None:
         try:
             from paddleocr import PaddleOCR
+
             from core.config import get_settings
 
             settings = get_settings()

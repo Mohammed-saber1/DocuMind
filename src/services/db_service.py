@@ -20,10 +20,11 @@ Controlled via environment variables:
 
 """
 
-import os
 import json
-from pymongo import MongoClient
+import os
+
 from dotenv import load_dotenv
+from pymongo import MongoClient
 
 load_dotenv()
 

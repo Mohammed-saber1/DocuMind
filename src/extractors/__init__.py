@@ -14,15 +14,15 @@ This module provides extractors for different document types:
 - base_extractor: Abstract base class for all extractors
 """
 
-from extractors.pdf_extractor import extract_pdf
-from extractors.word_extractor import extract_word
-from extractors.excel_extractor import extract_excel, extract_csv
-from extractors.ppt_extractor import extract_ppt
-from extractors.image_extractor import extract_image
-from extractors.url_extractor import extract_url
-from extractors.youtube_extractor import extract_youtube
-from extractors.media_extractor import extract_media
 from extractors.base_extractor import BaseExtractor
+from extractors.excel_extractor import extract_csv, extract_excel
+from extractors.image_extractor import extract_image
+from extractors.media_extractor import extract_media
+from extractors.pdf_extractor import extract_pdf
+from extractors.ppt_extractor import extract_ppt
+from extractors.url_extractor import extract_url
+from extractors.word_extractor import extract_word
+from extractors.youtube_extractor import extract_youtube
 
 __all__ = [
     "extract_pdf",

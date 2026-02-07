@@ -5,9 +5,10 @@ Chat Schemas 📋
 Pydantic models for chat API request/response validation.
 """
 
-from pydantic import BaseModel, Field
-from typing import List, Optional
 from datetime import datetime
+from typing import List, Optional
+
+from pydantic import BaseModel, Field
 
 
 class ChatRequest(BaseModel):

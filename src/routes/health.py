@@ -1,7 +1,8 @@
 """Base API routes."""
 
 from fastapi import APIRouter, Depends
-from core.config import get_settings, Settings
+
+from core.config import Settings, get_settings
 
 base_router = APIRouter(
     prefix="/api/v1",

@@ -6,7 +6,7 @@ to ensure consistent interface across different file types.
 """
 
 from abc import ABC, abstractmethod
-from typing import Tuple, List
+from typing import List, Tuple
 
 
 class BaseExtractor(ABC):

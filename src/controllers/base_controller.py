@@ -8,7 +8,8 @@ common utilities and configuration.
 import os
 import random
 import string
-from core.config import get_settings, Settings
+
+from core.config import Settings, get_settings
 
 
 class BaseController:

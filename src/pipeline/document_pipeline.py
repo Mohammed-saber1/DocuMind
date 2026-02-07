@@ -27,21 +27,21 @@ Supported Inputs:
 
 """
 
-import os
 import json
+import os
 import shutil
 
-from extractors.pdf_extractor import extract_pdf
-from extractors.word_extractor import extract_word
-from extractors.excel_extractor import extract_excel, extract_csv
-from extractors.ppt_extractor import extract_ppt
+from extractors.excel_extractor import extract_csv, extract_excel
 from extractors.image_extractor import extract_image
-from extractors.url_extractor import extract_url
-from extractors.youtube_extractor import extract_youtube
 from extractors.media_extractor import extract_media
-from services.ocr_service import maybe_run_ocr
-from services.llm_service import run_agent, analyze_tables_with_llm
+from extractors.pdf_extractor import extract_pdf
+from extractors.ppt_extractor import extract_ppt
+from extractors.url_extractor import extract_url
+from extractors.word_extractor import extract_word
+from extractors.youtube_extractor import extract_youtube
+from services.llm_service import analyze_tables_with_llm, run_agent
 from services.media_service import is_media_file, is_video_file
+from services.ocr_service import maybe_run_ocr
 from services.web_scraper_service import is_youtube_url
 
 
@@ -109,13 +109,13 @@ async def pipeline(
     # =======================================================================
     file_hash = None
     if input_type in ["file", "media"] and file_path:
-        from utils.file_utils import calculate_file_hash
+        from services.db_service import get_document_by_hash, save_to_mongodb
         from services.memory_service import (
             check_hash_exists,
             get_chunks_by_hash,
             index_chunks,
         )
-        from services.db_service import get_document_by_hash, save_to_mongodb
+        from utils.file_utils import calculate_file_hash
 
         file_hash = calculate_file_hash(file_path)
 
@@ -233,9 +233,9 @@ async def pipeline(
     # --- Smart OCR/VLM Logic ---
     if use_ocr_vlm and images:
         from services.ocr_service import (
+            OCR_THRESHOLD,
             run_ocr_on_images_async,
             should_use_ocr,
-            OCR_THRESHOLD,
         )
 
         # 1. Run OCR on all images first (async for better performance)
@@ -350,9 +350,9 @@ async def pipeline(
 
     # --- RAG Indexing (with Hash Deduplication) ---
     try:
-        from utils.file_utils import calculate_file_hash
+        from services.memory_service import check_hash_exists, index_chunks
         from services.rag_service import process_document_for_rag
-        from services.memory_service import index_chunks, check_hash_exists
+        from utils.file_utils import calculate_file_hash
 
         # Calculate file hash for deduplication (only if not already set for URLs)
         if file_hash is None and file_path:
@@ -370,8 +370,8 @@ async def pipeline(
             # Use row-based chunking for Excel/CSV files
             if source in ["excel", "csv"]:
                 from services.rag_service import (
-                    create_excel_chunks,
                     create_enhanced_excel_summary,
+                    create_excel_chunks,
                 )
 
                 print("📊 Using row-based chunking for Excel/CSV file...")

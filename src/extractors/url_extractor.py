@@ -12,13 +12,13 @@ Returns:
     - source_type: "url"
 """
 
+import hashlib
+import logging
 import os
 import uuid
-import logging
-import hashlib
-from typing import Tuple, List
+from typing import List, Tuple
 
-from services.web_scraper_service import scrape_url, ScrapedContent
+from services.web_scraper_service import ScrapedContent, scrape_url
 
 logger = logging.getLogger(__name__)
 

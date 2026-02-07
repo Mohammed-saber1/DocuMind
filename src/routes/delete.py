@@ -9,8 +9,9 @@ Endpoints:
 - GET /api/v1/documents/     - List all indexed documents
 """
 
-from fastapi import APIRouter, HTTPException, Query
 from typing import Optional
+
+from fastapi import APIRouter, HTTPException, Query
 
 documents_router = APIRouter(
     prefix="/api/v1/documents",
@@ -28,11 +29,11 @@ async def delete_document(
     """
     Delete a document (if source_id provided) or an ENTIRE session (if source_id is None).
     """
-    from services.memory_service import (
-        delete_chunks_by_source,
-        delete_chunks_by_session,
-    )
     from services.db_service import delete_file_from_session, delete_full_session
+    from services.memory_service import (
+        delete_chunks_by_session,
+        delete_chunks_by_source,
+    )
 
     # Strip whitespace/newlines from IDs
     clean_session_id = session_id.strip()

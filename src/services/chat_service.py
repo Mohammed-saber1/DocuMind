@@ -11,25 +11,26 @@ This service handles all chat-related business logic including:
 Architecture follows the Controller -> Service -> Repository pattern.
 """
 
-import os
+import asyncio
 import json
 import logging
-import asyncio
+import os
 import time
-from typing import List, Dict, Any, Optional, Generator, AsyncGenerator
 from datetime import datetime
+from typing import Any, AsyncGenerator, Dict, Generator, List, Optional
 
+from langchain_core.messages import AIMessage, HumanMessage, SystemMessage
 from langchain_ollama import ChatOllama
-from langchain_core.messages import HumanMessage, AIMessage, SystemMessage
-from services.memory_service import search_similar_chunks
-from services.db_service import (
-    save_chat_message,
-    get_chat_history_from_db,
-    clear_chat_history_from_db,
-)
+
 from core.config import get_settings
-from utils.file_utils import calculate_file_hash
 from services.cache_service import get_cache
+from services.db_service import (
+    clear_chat_history_from_db,
+    get_chat_history_from_db,
+    save_chat_message,
+)
+from services.memory_service import search_similar_chunks
+from utils.file_utils import calculate_file_hash
 
 logger = logging.getLogger(__name__)
 

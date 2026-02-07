@@ -16,21 +16,21 @@ Returns:
     - source_type: "video" or "audio"
 """
 
-import os
-import uuid
 import json
 import logging
-from typing import Tuple, List
+import os
+import uuid
+from typing import List, Tuple
 
 from services.media_service import (
-    convert_to_mp3,
-    transcribe_audio,
+    SUPPORTED_AUDIO_EXTENSIONS,
+    SUPPORTED_VIDEO_EXTENSIONS,
     TranscriptionResult,
-    is_video_file,
+    convert_to_mp3,
     is_audio_file,
     is_media_file,
-    SUPPORTED_VIDEO_EXTENSIONS,
-    SUPPORTED_AUDIO_EXTENSIONS,
+    is_video_file,
+    transcribe_audio,
 )
 
 logger = logging.getLogger(__name__)

@@ -1,9 +1,10 @@
 """Image file extractor."""
 
 import os
+
 from PIL import Image
 
-from utils.file_utils import create_document_folder, save_text, save_metadata
+from utils.file_utils import create_document_folder, save_metadata, save_text
 
 
 def extract_image(file_path):

@@ -1,12 +1,12 @@
 """Document extraction API routes."""
 
-import uuid
 import os
 import pathlib
 import shutil
-
-from fastapi import APIRouter, UploadFile, File, Form, HTTPException
+import uuid
 from typing import List, Optional
+
+from fastapi import APIRouter, File, Form, HTTPException, UploadFile
 from pydantic import BaseModel
 
 from controllers.extraction_controller import ExtractionController

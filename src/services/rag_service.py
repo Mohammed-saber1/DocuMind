@@ -1,11 +1,12 @@
-import logging
 import json
-from typing import List, Dict, Any, Tuple
-from langchain_text_splitters import TokenTextSplitter
+import logging
+import os
+from typing import Any, Dict, List, Tuple
+
+from dotenv import load_dotenv
 from langchain_experimental.text_splitter import SemanticChunker
 from langchain_ollama import OllamaEmbeddings
-import os
-from dotenv import load_dotenv
+from langchain_text_splitters import TokenTextSplitter
 
 load_dotenv()
 

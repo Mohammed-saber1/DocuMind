@@ -12,17 +12,17 @@ Returns:
     - source_type: "youtube"
 """
 
-import os
-import uuid
+import hashlib
 import json
 import logging
-import hashlib
-from typing import Tuple, List
+import os
+import uuid
+from typing import List, Tuple
 
 from services.media_service import (
+    TranscriptionResult,
     download_youtube_audio,
     transcribe_audio,
-    TranscriptionResult,
 )
 
 logger = logging.getLogger(__name__)

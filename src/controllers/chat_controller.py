@@ -12,7 +12,7 @@ import logging
 from typing import Optional
 
 from controllers.base_controller import BaseController
-from services.chat_service import get_chat_service, ChatService
+from services.chat_service import ChatService, get_chat_service
 
 logger = logging.getLogger(__name__)
 

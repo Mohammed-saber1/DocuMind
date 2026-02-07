@@ -11,11 +11,11 @@ Handles web page content extraction for the DocuMind extraction pipeline:
 Returns content in a format compatible with the document pipeline.
 """
 
+import hashlib
+import logging
 import os
 import re
 import uuid
-import logging
-import hashlib
 from dataclasses import dataclass, field
 from typing import List, Optional
 from urllib.parse import urljoin, urlparse

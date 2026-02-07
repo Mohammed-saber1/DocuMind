@@ -13,13 +13,14 @@ Endpoints:
 
 from fastapi import APIRouter, HTTPException
 from fastapi.responses import StreamingResponse
+
+from controllers.chat_controller import ChatController
 from schemas.chat import (
+    ChatHistoryResponse,
     ChatRequest,
     ChatResponse,
-    ChatHistoryResponse,
     ClearHistoryResponse,
 )
-from controllers.chat_controller import ChatController
 
 chat_router = APIRouter(
     prefix="/api/v1/chat",

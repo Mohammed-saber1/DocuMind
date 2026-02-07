@@ -11,14 +11,15 @@ Key features:
 - Configurable TTL and similarity thresholds
 """
 
-import json
 import hashlib
+import json
 import logging
-import numpy as np
-from typing import Optional, Dict, Any, List
 from datetime import datetime
+from typing import Any, Dict, List, Optional
 
+import numpy as np
 import redis
+
 from core.config import get_settings
 
 logger = logging.getLogger(__name__)
