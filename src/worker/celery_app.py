@@ -24,5 +24,6 @@ celery_app.conf.update(
     task_time_limit=settings.worker.time_limit,  # 1 hour + 1 min hard limit (kill)
     # Optional: Retry settings
     task_acks_late=settings.worker.acks_late,  # Acknowledge after task completes
-    task_reject_on_worker_lost=settings.worker.reject_on_worker_lost,  # Retry if worker crashes
+    # Retry if worker crashes
+    task_reject_on_worker_lost=settings.worker.reject_on_worker_lost,
 )

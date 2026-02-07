@@ -28,7 +28,7 @@ Fixtures:
 Usage:
 ------
     Fixtures are automatically available in test functions:
-    
+
     def test_example(mock_settings, mock_redis_client):
         assert mock_settings.app_name == "DocuMind"
         assert mock_redis_client.ping() == True

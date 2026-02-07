@@ -66,7 +66,8 @@ def extraction_task(self, task_payload: dict):
     # 🔧 Validate and Fix Callback URL early
     if not callback_url:
         logger.warning(
-            "⚠️ No callback_url provided and no default setting found. Callback will be skipped."
+            "⚠️ No callback_url provided and no default setting found. "
+            "Callback will be skipped."
         )
     else:
         logger.info(f"Using callback_url: {callback_url}")
@@ -80,7 +81,8 @@ def extraction_task(self, task_payload: dict):
     links = task_payload.get("links", [])
 
     logger.info(
-        f"🚀 Extraction Task started | Session: {session_id} | Files: {len(file_paths)} | Links: {len(links)}"
+        f"🚀 Extraction Task started | Session: {session_id} | "
+        f"Files: {len(file_paths)} | Links: {len(links)}"
     )
 
     # Reconstruct "UploadFile" objects from disk paths

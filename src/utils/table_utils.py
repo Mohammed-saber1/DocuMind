@@ -137,7 +137,7 @@ def detect_numeric_columns(table_data):
                     try:
                         float(cell.replace(",", "").replace("$", ""))
                         numeric_count += 1
-                    except:
+                    except ValueError:
                         pass
 
         # If >70% numeric, consider it a numeric column

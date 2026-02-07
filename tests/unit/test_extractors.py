@@ -28,12 +28,6 @@ License:
     MIT License
 """
 
-from pathlib import Path
-from unittest.mock import MagicMock, patch
-
-import pytest
-
-
 class TestPDFExtractor:
     """
     Unit tests for PDF document extraction.
