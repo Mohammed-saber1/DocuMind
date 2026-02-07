@@ -1,16 +1,29 @@
+# =============================================================================
 # DocuMind Dockerfile
-# ====================
-# Multi-stage build for production deployment
+# =============================================================================
+#
+# Multi-stage build for production deployment of the DocuMind application.
+# Optimized for minimal image size while including all required dependencies.
+#
+# Build:
+#   docker build -f docker/Dockerfile -t documind:latest .
+#
+# Run:
+#   docker run -p 8000:8000 documind:latest
+#
+# Author: Mohammed Saber <mohammed.saber.business@gmail.com>
+# =============================================================================
 
 # Stage 1: Builder
-FROM python:3.11-slim as builder
+# Installs Python dependencies in an isolated environment
+FROM python:3.11-slim AS builder
 
 WORKDIR /app
 
 # Install build dependencies
 RUN apt-get update && apt-get install -y --no-install-recommends \
     build-essential \
-    libgl1-mesa-glx \
+    libgl1 \
     libglib2.0-0 \
     && rm -rf /var/lib/apt/lists/*
 
@@ -19,13 +32,14 @@ COPY src/requirements.txt .
 RUN pip install --no-cache-dir --user -r requirements.txt
 
 # Stage 2: Runtime
-FROM python:3.11-slim as runtime
+# Minimal image with only runtime dependencies
+FROM python:3.11-slim AS runtime
 
 WORKDIR /app
 
 # Install runtime dependencies
 RUN apt-get update && apt-get install -y --no-install-recommends \
-    libgl1-mesa-glx \
+    libgl1 \
     libglib2.0-0 \
     ffmpeg \
     curl \
