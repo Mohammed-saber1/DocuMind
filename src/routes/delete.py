@@ -11,7 +11,7 @@ Endpoints:
 
 from typing import Optional
 
-from fastapi import APIRouter, HTTPException, Query
+from fastapi import APIRouter, Query
 
 documents_router = APIRouter(
     prefix="/api/v1/documents",

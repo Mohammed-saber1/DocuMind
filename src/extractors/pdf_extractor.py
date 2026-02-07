@@ -1,7 +1,6 @@
 """PDF file extractor using hybrid approach: PyMuPDF for text/images, pdfplumber for tables."""
 
 import os
-import uuid
 
 import fitz  # PyMuPDF
 import pdfplumber

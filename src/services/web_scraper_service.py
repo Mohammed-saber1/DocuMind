@@ -15,7 +15,6 @@ import hashlib
 import logging
 import os
 import re
-import uuid
 from dataclasses import dataclass, field
 from typing import List, Optional
 from urllib.parse import urljoin, urlparse

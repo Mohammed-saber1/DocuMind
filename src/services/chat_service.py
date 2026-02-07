@@ -12,14 +12,10 @@ Architecture follows the Controller -> Service -> Repository pattern.
 """
 
 import asyncio
-import json
 import logging
-import os
 import time
-from datetime import datetime
-from typing import Any, AsyncGenerator, Dict, Generator, List, Optional
+from typing import Any, Dict, Generator, List, Optional
 
-from langchain_core.messages import AIMessage, HumanMessage, SystemMessage
 from langchain_ollama import ChatOllama
 
 from core.config import get_settings
@@ -30,7 +26,6 @@ from services.db_service import (
     save_chat_message,
 )
 from services.memory_service import search_similar_chunks
-from utils.file_utils import calculate_file_hash
 
 logger = logging.getLogger(__name__)
 

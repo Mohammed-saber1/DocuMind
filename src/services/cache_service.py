@@ -7,7 +7,7 @@ Caches both query embeddings and full responses to reduce latency.
 
 Key features:
 - Exact match caching (hash-based)
-- Semantic similarity caching (embedding-based) 
+- Semantic similarity caching (embedding-based)
 - Configurable TTL and similarity thresholds
 """
 

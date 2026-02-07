@@ -27,7 +27,6 @@ from services.media_service import (
     SUPPORTED_VIDEO_EXTENSIONS,
     TranscriptionResult,
     convert_to_mp3,
-    is_audio_file,
     is_media_file,
     is_video_file,
     transcribe_audio,
@@ -114,7 +113,7 @@ def extract_media(
         from services.media_service import save_transcription_to_csv
 
         # Save to base_dir so it's included in artifacts
-        csv_path = save_transcription_to_csv(transcription, base_dir, filename)
+        save_transcription_to_csv(transcription, base_dir, filename)
     except Exception as e:
         logger.error(f"⚠️ Failed to save CSV transcription: {e}")
 

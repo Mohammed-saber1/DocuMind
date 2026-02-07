@@ -32,7 +32,6 @@ class BaseExtractor(ABC):
                 - doc_id: Unique document identifier
                 - source_type: Type of source document (e.g., 'pdf', 'docx')
         """
-        pass
 
     @property
     @abstractmethod
@@ -43,7 +42,6 @@ class BaseExtractor(ABC):
         Returns:
             List of file extensions this extractor can handle (e.g., ['.pdf'])
         """
-        pass
 
     def can_extract(self, file_path: str) -> bool:
         """

@@ -68,8 +68,8 @@ app = FastAPI(
     version=settings.app_version,
     description="""
      DocuMind API 🧠
-    
-    An intelligent document extraction service that uses hybrid OCR and VLM 
+
+    An intelligent document extraction service that uses hybrid OCR and VLM
     techniques to process documents, extract structured data, and enable RAG workflows.
     """,
     lifespan=lifespan,

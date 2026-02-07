@@ -6,7 +6,7 @@ Extracts content from YouTube videos by downloading audio and transcribing.
 Follows the same interface as other extractors (PDF, Word, etc.).
 
 Returns:
-    - base_dir: Directory containing extracted content  
+    - base_dir: Directory containing extracted content
     - images: Empty list (videos don't have images to extract)
     - doc_id: Unique document identifier
     - source_type: "youtube"
@@ -75,7 +75,7 @@ def extract_youtube(
     # Build content text
     content_parts = []
 
-    content_parts.append(f"# YouTube Video Transcript\n")
+    content_parts.append("# YouTube Video Transcript\n")
     content_parts.append(f"**Source:** {youtube_url}")
     content_parts.append(f"**Language:** {transcription.language}")
     content_parts.append(f"**Duration:** {transcription.duration:.1f} seconds\n")

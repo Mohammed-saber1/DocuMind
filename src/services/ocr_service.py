@@ -8,7 +8,7 @@ import os
 os.environ["GLOG_minloglevel"] = "2"
 os.environ["FLAGS_minloglevel"] = "2"
 
-from typing import Dict, List, Optional, Tuple
+from typing import Dict, List, Tuple
 
 # Configure logging
 logger = logging.getLogger(__name__)

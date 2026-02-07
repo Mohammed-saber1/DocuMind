@@ -2,7 +2,7 @@
 VLM (Vision Language Model) Service
 VLM Service (Vision Language Model) 👁️‍🗨️
 =======================================
-This service interacts with Vision Language Models to provide descriptions of images 
+This service interacts with Vision Language Models to provide descriptions of images
 that could not be reliably processed by OCR.
 
 Workflow:
@@ -261,7 +261,7 @@ def _call_vlm_api(
 
         # Validate base64 encoding
         if not image_data or len(image_data) < 100:
-            print(f"  ⚠️  Image encoding failed or file too small")
+            print("  ⚠️  Image encoding failed or file too small")
             return None
 
         # Prepare headers

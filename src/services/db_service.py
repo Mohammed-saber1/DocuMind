@@ -213,7 +213,9 @@ def delete_full_session(session_id: str) -> dict:
         return {"success": False, "error": "MongoDB connection failed"}
 
     sess_id = str(session_id).strip()
-    logger_print = lambda x: print(f"🗑️ MongoDB Session Cleanup: {x}")
+
+    def logger_print(x):
+        print(f"🗑️ MongoDB Session Cleanup: {x}")
 
     try:
         db = client[MONGO_DB]
@@ -271,7 +273,7 @@ def save_chat_message(session_id: str, role: str, content: str) -> bool:
         }
 
         # Upsert: Create document with session_id as _id, or push to existing
-        result = collection.update_one(
+        collection.update_one(
             {"_id": session_id},
             {
                 "$setOnInsert": {"created_at": datetime.now().isoformat()},

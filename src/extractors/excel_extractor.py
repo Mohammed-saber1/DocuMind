@@ -70,7 +70,7 @@ def extract_excel_old(file_path):
                         value = (
                             f"{date_tuple[0]}-{date_tuple[1]:02d}-{date_tuple[2]:02d}"
                         )
-                    except:
+                    except Exception:
                         value = str(value)
                 else:
                     value = str(value).strip()
@@ -157,7 +157,7 @@ def extract_excel(file_path):
     # NOTE: Does not support .xls here, handled above.
     try:
         workbook_with_charts = openpyxl.load_workbook(file_path, data_only=False)
-    except:
+    except Exception:
         workbook_with_charts = None
 
     for sheet_idx, sheet_name in enumerate(workbook.sheetnames, 1):
@@ -299,7 +299,7 @@ def extract_excel(file_path):
                                 f"    Data Series: {len(chart_info['data_series'])}\n"
                             )
 
-            except:
+            except Exception:
                 pass
 
         # Extract images from sheet
@@ -343,7 +343,7 @@ def extract_excel(file_path):
                                         with open(img_path, "wb") as f:
                                             f.write(image_obj.read())
                                         saved = True
-                                except:
+                                except Exception:
                                     pass
 
                             if not saved:
@@ -361,7 +361,7 @@ def extract_excel(file_path):
                                         with open(img_path, "wb") as f:
                                             f.write(img_data)
                                         saved = True
-                                except:
+                                except Exception:
                                     pass
 
                             if saved:
@@ -430,7 +430,7 @@ def extract_csv(file_path):
                 try:
                     dialect = sniffer.sniff(sample)
                     delimiter = dialect.delimiter
-                except:
+                except Exception:
                     delimiter = ","
 
                 reader = csv.reader(f, delimiter=delimiter)

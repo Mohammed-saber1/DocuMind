@@ -9,8 +9,6 @@ from typing import List, Optional
 from fastapi import APIRouter, File, Form, HTTPException, UploadFile
 from pydantic import BaseModel
 
-from controllers.extraction_controller import ExtractionController
-from schemas.extraction import ExtractionResponse
 from worker.tasks import extraction_task
 
 extraction_router = APIRouter(

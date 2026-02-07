@@ -1,9 +1,6 @@
 import logging
 import os
-import sys
 from typing import Any, Dict, List
-
-from langchain_chroma import Chroma
 
 # Configure Logging
 logging.basicConfig(level=logging.INFO)
@@ -128,7 +125,7 @@ def search_similar_chunks(
         if session_id and source_id:
             # ChromaDB requires $and for multiple filters
             filters = {"$and": [{"session_id": session_id}, {"source_id": source_id}]}
-            logger.info(f"Filtering by session_id AND source_id using $and")
+            logger.info("Filtering by session_id AND source_id using $and")
         elif session_id:
             filters = {"session_id": session_id}
             logger.info(f"Filtering by session_id: {session_id}")

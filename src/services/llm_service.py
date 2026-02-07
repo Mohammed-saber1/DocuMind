@@ -1,7 +1,7 @@
 import json
 import logging
 import os
-from typing import Any, Dict, List, Optional
+from typing import Dict, List, Optional
 
 from langchain_ollama import ChatOllama
 from pydantic import BaseModel, Field
@@ -152,7 +152,7 @@ async def run_agent(
                         f"  Content: {img.get('content_images', '')[:300]}...\n"
                     )
                     if img.get("is_graph"):
-                        images_info += f"  Type: Graph/Chart\n"
+                        images_info += "  Type: Graph/Chart\n"
 
     # Limit text for LLM to avoid token limits
     text_for_llm = clean_text[:3500] if len(clean_text) > 3500 else clean_text
@@ -405,10 +405,10 @@ async def analyze_tables_with_llm(base_dir):
 
     # Prepare tables text for LLM
     if is_excel:
-        tables_text = f"EXCEL WORKBOOK ANALYSIS:\n"
+        tables_text = "EXCEL WORKBOOK ANALYSIS:\n"
         tables_text += f"Total Sheets: {len(tables_data)}\n\n"
     elif is_csv:
-        tables_text = f"CSV FILE ANALYSIS:\n\n"
+        tables_text = "CSV FILE ANALYSIS:\n\n"
     else:
         tables_text = "TABLES TO ANALYZE:\n\n"
 

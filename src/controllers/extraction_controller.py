@@ -120,7 +120,7 @@ class ExtractionController(BaseController):
                     try:
                         parsed = json.loads(s_link)
                         if isinstance(parsed, list):
-                            expanded_links.extend([str(l) for l in parsed])
+                            expanded_links.extend([str(item) for item in parsed])
                         else:
                             expanded_links.append(s_link)
                     except Exception:

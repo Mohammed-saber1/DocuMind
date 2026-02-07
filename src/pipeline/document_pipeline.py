@@ -29,7 +29,6 @@ Supported Inputs:
 
 import json
 import os
-import shutil
 
 from extractors.excel_extractor import extract_csv, extract_excel
 from extractors.image_extractor import extract_image
@@ -40,9 +39,7 @@ from extractors.url_extractor import extract_url
 from extractors.word_extractor import extract_word
 from extractors.youtube_extractor import extract_youtube
 from services.llm_service import analyze_tables_with_llm, run_agent
-from services.media_service import is_media_file, is_video_file
-from services.ocr_service import maybe_run_ocr
-from services.web_scraper_service import is_youtube_url
+from services.media_service import is_media_file
 
 
 async def pipeline(
@@ -232,11 +229,7 @@ async def pipeline(
 
     # --- Smart OCR/VLM Logic ---
     if use_ocr_vlm and images:
-        from services.ocr_service import (
-            OCR_THRESHOLD,
-            run_ocr_on_images_async,
-            should_use_ocr,
-        )
+        from services.ocr_service import OCR_THRESHOLD, run_ocr_on_images_async
 
         # 1. Run OCR on all images first (async for better performance)
         ocr_results = await run_ocr_on_images_async(images)
