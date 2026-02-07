@@ -29,7 +29,11 @@ from PIL import Image
 from core.config import get_settings
 
 # Prompt used to guide the VLM's analysis
-VLM_PROMPT = "Describe this image in detail. If it contains text, transcribe it. If it is a chart or graph, summarize the key trends."
+VLM_PROMPT = (
+    "Describe this image in detail. "
+    "If it contains text, transcribe it. "
+    "If it is a chart or graph, summarize the key trends."
+)
 
 # NOTE: Groq frequently updates their model availability.
 # Check https://console.groq.com/docs/deprecations for the latest information.
@@ -38,9 +42,12 @@ VLM_PROMPT = "Describe this image in detail. If it contains text, transcribe it.
 # Supported models by provider (verified and working as of January 2026)
 SUPPORTED_MODELS = {
     "groq": [
-        "meta-llama/llama-4-scout-17b-16e-instruct",  # Llama 4 Scout - supports vision + tool use
-        "meta-llama/llama-4-maverick-17b-128e-instruct",  # Llama 4 Maverick - supports vision + tool use
-        "llama-3.2-90b-vision-preview",  # Llama 3.2 90B - larger model
+        # Llama 4 Scout - supports vision + tool use
+        "meta-llama/llama-4-scout-17b-16e-instruct",
+        # Llama 4 Maverick - supports vision + tool use
+        "meta-llama/llama-4-maverick-17b-128e-instruct",
+        # Llama 3.2 90B - larger model
+        "llama-3.2-90b-vision-preview",
     ],
     "mistral": ["pixtral-12b-2409"],
     "local": ["Qwen/Qwen2.5-VL-7B-Instruct"],
@@ -112,7 +119,8 @@ def analyze_extracted_images(base_dir: str, image_paths: List[str]) -> List[Dict
         try:
             count += 1
             print(
-                f"  [{count}/{len(images_to_process)}] Analyzing: {os.path.basename(img_path)}..."
+                f"  [{count}/{len(images_to_process)}] "
+                f"Analyzing: {os.path.basename(img_path)}..."
             )
 
             # Call remote VLM API
@@ -211,7 +219,8 @@ def _call_vlm_api(
         # Validate provider
         if provider not in DEFAULT_MODELS:
             print(
-                f"  ⚠️  Unknown provider: {provider}. Supported: {', '.join(DEFAULT_MODELS.keys())}"
+                f"  ⚠️  Unknown provider: {provider}. "
+                f"Supported: {', '.join(DEFAULT_MODELS.keys())}"
             )
             return None
 
@@ -243,7 +252,10 @@ def _call_vlm_api(
                 # Check dimensions (filter out tiny images < 50x50)
                 width, height = img.size
                 if width < 50 or height < 50:
-                    print(f"  ⚠️  Image too small ({width}x{height}), skipping analysis")
+                    print(
+                        f"  ⚠️  Image too small ({width}x{height}), "
+                        "skipping analysis"
+                    )
                     return None
 
                 # Save to in-memory JPEG
@@ -276,7 +288,11 @@ def _call_vlm_api(
                 "content": [
                     {
                         "type": "text",
-                        "text": "Describe this image in detail. If it contains text, transcribe it. If it's a chart or graph, explain what data it shows.",
+                        "text": (
+                            "Describe this image in detail. "
+                            "If it contains text, transcribe it. "
+                            "If it's a chart or graph, explain what data it shows."
+                        ),
                     },
                     {
                         "type": "image_url",

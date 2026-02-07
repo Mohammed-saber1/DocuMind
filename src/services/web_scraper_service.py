@@ -53,7 +53,10 @@ def _get_headers() -> dict:
     settings = get_settings()
     return {
         "User-Agent": settings.scraper.user_agent,
-        "Accept": "text/html,application/xhtml+xml,application/xml;q=0.9,image/webp,*/*;q=0.8",
+        "Accept": (
+            "text/html,application/xhtml+xml,"
+            "application/xml;q=0.9,image/webp,*/*;q=0.8"
+        ),
         "Accept-Language": "en-US,en;q=0.5",
         "Accept-Encoding": "gzip, deflate",
         "Connection": "keep-alive",
