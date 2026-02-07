@@ -1,9 +1,9 @@
 """Image file extractor."""
+
 import os
 from PIL import Image
 
 from utils.file_utils import create_document_folder, save_text, save_metadata
-
 
 
 def extract_image(file_path):
@@ -17,16 +17,18 @@ def extract_image(file_path):
 
     description = ""
     source_type = "image"
-    
+
     # VLM Analysis is now handled in the main pipeline based on OCR confidence
     # (See pipeline/document_pipeline.py)
 
     save_text(text_dir, description)
-    save_metadata(base, {
-        "source": source_type,
-        "vlm_enabled": False,
-
-        "description_length": len(description)
-    })
+    save_metadata(
+        base,
+        {
+            "source": source_type,
+            "vlm_enabled": False,
+            "description_length": len(description),
+        },
+    )
 
     return base, [img_path], doc_id, source_type

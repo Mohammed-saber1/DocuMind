@@ -41,6 +41,7 @@ License:
 --------
     MIT License
 """
+
 import pytest
 from unittest.mock import MagicMock, AsyncMock
 import sys
@@ -54,7 +55,7 @@ sys.path.insert(0, str(Path(__file__).parent.parent / "src"))
 def mock_settings():
     """
     Create mock application settings.
-    
+
     Returns:
         MagicMock: Mock settings object with default test configuration.
     """
@@ -74,7 +75,7 @@ def mock_settings():
 def mock_mongo_client():
     """
     Create mock MongoDB client.
-    
+
     Returns:
         MagicMock: Mock MongoDB client with basic operations mocked.
     """
@@ -87,7 +88,7 @@ def mock_mongo_client():
 def mock_redis_client():
     """
     Create mock Redis client.
-    
+
     Returns:
         MagicMock: Mock Redis client with get/set operations mocked.
     """
@@ -102,7 +103,7 @@ def mock_redis_client():
 def mock_chroma_client():
     """
     Create mock ChromaDB client.
-    
+
     Returns:
         MagicMock: Mock ChromaDB client with collection operations mocked.
     """
@@ -118,17 +119,13 @@ def mock_chroma_client():
 def sample_pdf_content():
     """
     Provide sample extracted PDF content.
-    
+
     Returns:
         dict: Sample PDF content with text and metadata.
     """
     return {
         "text": "This is sample document content for testing purposes.",
-        "metadata": {
-            "source": "test.pdf",
-            "pages": 1,
-            "author": "Test Author"
-        }
+        "metadata": {"source": "test.pdf", "pages": 1, "author": "Test Author"},
     }
 
 
@@ -136,13 +133,13 @@ def sample_pdf_content():
 def sample_chat_messages():
     """
     Provide sample chat message history.
-    
+
     Returns:
         list: List of message dictionaries with role and content.
     """
     return [
         {"role": "user", "content": "What is this document about?"},
-        {"role": "assistant", "content": "This document is about testing."}
+        {"role": "assistant", "content": "This document is about testing."},
     ]
 
 
@@ -150,7 +147,7 @@ def sample_chat_messages():
 def mock_llm_response():
     """
     Create mock LLM response.
-    
+
     Returns:
         MagicMock: Mock response object with content attribute.
     """
@@ -163,7 +160,7 @@ def mock_llm_response():
 async def async_mock_llm():
     """
     Create async mock for LLM service.
-    
+
     Returns:
         AsyncMock: Async mock with ainvoke method mocked.
     """

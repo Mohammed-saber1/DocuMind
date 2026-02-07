@@ -1,9 +1,15 @@
 """Word/DOCX file extractor."""
+
 import os
 import zipfile
 import docx
 
-from utils.file_utils import create_document_folder, save_text, save_metadata, save_tables
+from utils.file_utils import (
+    create_document_folder,
+    save_text,
+    save_metadata,
+    save_tables,
+)
 from utils.table_utils import format_table_as_markdown
 
 
@@ -14,27 +20,26 @@ def extract_word(file_path):
     document = docx.Document(file_path)
     text = ""
     tables_data = []
-    
+
     # Extract paragraphs and tables in order
     for element in document.element.body:
         # Check if it's a paragraph
-        if element.tag.endswith('p'):
+        if element.tag.endswith("p"):
             para = docx.text.paragraph.Paragraph(element, document)
             text += para.text + "\n"
-        
+
         # Check if it's a table
-        elif element.tag.endswith('tbl'):
+        elif element.tag.endswith("tbl"):
             table = docx.table.Table(element, document)
             table_data = []
             for row in table.rows:
                 table_data.append([cell.text.strip() for cell in row.cells])
-            
+
             if table_data:
-                tables_data.append({
-                    "table_index": len(tables_data) + 1,
-                    "data": table_data
-                })
-                
+                tables_data.append(
+                    {"table_index": len(tables_data) + 1, "data": table_data}
+                )
+
                 text += f"\n\n[TABLE {len(tables_data)}]\n"
                 text += format_table_as_markdown(table_data)
                 text += "\n"
@@ -60,10 +65,13 @@ def extract_word(file_path):
         print(f"📊 Found {len(tables_data)} table(s) in Word document")
 
     save_text(text_dir, text)
-    save_metadata(base, {
-        "source": "word", 
-        "images_found": len(images),
-        "tables_found": len(tables_data)
-    })
+    save_metadata(
+        base,
+        {
+            "source": "word",
+            "images_found": len(images),
+            "tables_found": len(tables_data),
+        },
+    )
 
     return base, images, doc_id, "word"

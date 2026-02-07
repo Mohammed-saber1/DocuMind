@@ -1,4 +1,5 @@
 """File and folder utility functions for document extraction."""
+
 import os
 import json
 import uuid
@@ -7,7 +8,7 @@ import uuid
 def create_document_folder(file_path: str):
     """
     Create folder structure for extracted document.
-    
+
     Returns:
         tuple: (doc_name, base_dir, text_dir, image_dir)
     """
@@ -43,7 +44,7 @@ def save_tables(base_dir, tables_data):
     """Save extracted tables as JSON."""
     tables_dir = os.path.join(base_dir, "tables")
     os.makedirs(tables_dir, exist_ok=True)
-    
+
     with open(os.path.join(tables_dir, "tables.json"), "w", encoding="utf-8") as f:
         json.dump(tables_data, f, indent=2, ensure_ascii=False)
 
@@ -54,9 +55,9 @@ def calculate_file_hash(file_path: str) -> str:
     Used for RAG deduplication.
     """
     import hashlib
+
     sha256_hash = hashlib.sha256()
     with open(file_path, "rb") as f:
         for byte_block in iter(lambda: f.read(4096), b""):
             sha256_hash.update(byte_block)
     return sha256_hash.hexdigest()
-

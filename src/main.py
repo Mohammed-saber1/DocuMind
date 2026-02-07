@@ -21,6 +21,7 @@ Run the server directly:
 Or using uvicorn:
     $ uvicorn src.main:app --reload
 """
+
 from fastapi import FastAPI
 from contextlib import asynccontextmanager
 
@@ -32,7 +33,7 @@ from routes import base_router, extraction_router, chat_router, documents_router
 async def lifespan(app: FastAPI):
     """
     Application Lifespan Context Manager.
-    
+
     This function handles events that occur before the application starts receiving requests
     and after it finishes handling requests. It is the modern replacement for
     `on_event("startup")` and `on_event("shutdown")`.
@@ -51,9 +52,9 @@ async def lifespan(app: FastAPI):
     print(f"🚀 Starting {settings.app_name} v{settings.app_version}")
     print(f"📦 MongoDB: {settings.mongo.url}")
     print(f"🤖 LLM Model: {settings.llm.model}")
-    
+
     yield
-    
+
     # --- SHUTDOWN ---
     print("👋 Shutting down...")
 
@@ -70,7 +71,7 @@ app = FastAPI(
     An intelligent document extraction service that uses hybrid OCR and VLM 
     techniques to process documents, extract structured data, and enable RAG workflows.
     """,
-    lifespan=lifespan
+    lifespan=lifespan,
 )
 
 # --- Router Registration ---
@@ -83,16 +84,17 @@ app.include_router(extraction_router)
 # chat_router: Knowledgebase Q&A endpoints (/api/v1/chat)
 app.include_router(chat_router)
 
-# documents_router: Document delete files endpoints (/api/v1/documents) for delete file acourding source id if need 
+# documents_router: Document delete files endpoints (/api/v1/documents) for delete file acourding source id if need
 app.include_router(documents_router)
 
 
 if __name__ == "__main__":
     """
     Standard Entry Point.
-    
+
     Allows running the application directly as a script.
     Defaults to host 0.0.0.0 (accessible externally) on port 8007.
     """
     import uvicorn
+
     uvicorn.run(app, host="0.0.0.0", port=8007)

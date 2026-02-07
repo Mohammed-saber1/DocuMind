@@ -36,4 +36,3 @@ __all__ = [
     "extract_media",
     "BaseExtractor",
 ]
-

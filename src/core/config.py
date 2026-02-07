@@ -3,6 +3,7 @@ Centralized configuration using Pydantic Settings.
 
 Organized into nested models for better structure and type safety.
 """
+
 from typing import List
 from functools import lru_cache
 from pydantic import BaseModel
@@ -43,7 +44,7 @@ class MongoSettings(BaseModel):
             base = self.url.replace("mongodb://", "")
             if base.endswith("/"):
                 base = base[:-1]
-            
+
             return f"mongodb://{self.username}:{self.password}@{base}/?authSource={self.authentication_source}"
         return self.url
 
@@ -86,6 +87,7 @@ class ChromaSettings(BaseModel):
 
 class LlamaCloudSettings(BaseModel):
     """Settings for LlamaCloud/LlamaParse document parsing."""
+
     api_key: str = ""
     timeout: int = 300  # 5 minutes per document
     enabled: bool = True  # Enable LlamaParse for supported file types
@@ -93,6 +95,7 @@ class LlamaCloudSettings(BaseModel):
 
 class WhisperSettings(BaseModel):
     """Settings for Whisper audio transcription."""
+
     model_size: str = "large-v2"
     device: str = "cuda"  # or "cpu"
     compute_type: str = "float16"
@@ -100,8 +103,11 @@ class WhisperSettings(BaseModel):
 
 class ScraperSettings(BaseModel):
     """Settings for web scraping."""
+
     timeout: int = 30
-    user_agent: str = "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 DocuMind/1.0"
+    user_agent: str = (
+        "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 DocuMind/1.0"
+    )
     max_content_length: int = 10 * 1024 * 1024  # 10MB
 
 
@@ -132,9 +138,10 @@ class Settings(BaseSettings):
     To override nested settings via env vars, use double underscores:
     e.g. MONGO__URL=...
     """
+
     app_name: str = "DocuMind"
     app_version: str = "1.0.0"
-    
+
     # Nested configurations
     mongo: MongoSettings = MongoSettings()
     redis: RedisSettings = RedisSettings()
@@ -152,16 +159,13 @@ class Settings(BaseSettings):
     log_level: str = "INFO"
     log_format: str = "%(asctime)s - %(name)s - %(levelname)s - %(message)s"
     log_file: str = "logs/extractor.log"
-    
+
     # Support for legacy flat env vars (optional, but good for backward compat if needed)
     # For this refactor, we are mapping them manually if Pydantic's aliases aren't used.
     # Pydantic v2 model_config allows env_nested_delimiter
 
     model_config = SettingsConfigDict(
-        env_file=".env",
-        case_sensitive=False,
-        env_nested_delimiter="__",
-        extra="ignore"
+        env_file=".env", case_sensitive=False, env_nested_delimiter="__", extra="ignore"
     )
 
 

@@ -1,9 +1,11 @@
 """Response enumerations for API responses."""
+
 from enum import Enum
 
 
 class ResponseStatusEnum(str, Enum):
     """API response status codes."""
+
     SUCCESS = "success"
     ERROR = "error"
     PROCESSING = "processing"
@@ -12,6 +14,7 @@ class ResponseStatusEnum(str, Enum):
 
 class ExtractionStatusEnum(str, Enum):
     """Document extraction status."""
+
     QUEUED = "queued"
     EXTRACTING = "extracting"
     ANALYZING = "analyzing"

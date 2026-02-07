@@ -1,4 +1,5 @@
 """Document extraction API routes."""
+
 import uuid
 import os
 import pathlib
@@ -24,10 +25,12 @@ UPLOAD_DIR = SRC_DIR / "temp" / "uploads"
 
 class AsyncExtractionResponse(BaseModel):
     """Response model for asynchronous extraction requests."""
+
     status: str
     task_id: str
     session_id: str
     message: str
+
 
 @extraction_router.post("/", response_model=AsyncExtractionResponse)
 async def extract_documents_async(
@@ -37,28 +40,27 @@ async def extract_documents_async(
     use_ocr_vlm: bool = Form(True),
     session_id: str = Form(...),
     user_description: Optional[str] = Form(None),
-    callback_url: Optional[str] = Form(None)
+    callback_url: Optional[str] = Form(None),
 ):
     """
     Async extraction: Uploads files or links (Web/YouTube) -> Saves to disk -> Queues Celery Task.
     Returns 202 Accepted immediately.
-    
+
     Accepts:
     - files: Document files (PDF, DOCX, XLSX, etc.), media files (MP4, MP3, etc.)
     - links: List of URLs (Web pages or YouTube videos)
-    
+
     At least one of files or links must be provided.
     """
     # Validate that at least one input is provided
     has_files = files and len(files) > 0 and files[0].filename
     has_links = links and len(links) > 0
-    
+
     if not has_files and not has_links:
         raise HTTPException(
-            status_code=400, 
-            detail="At least one input required: files or links"
+            status_code=400, detail="At least one input required: files or links"
         )
-    
+
     saved_file_info = []
 
     try:
@@ -71,16 +73,18 @@ async def extract_documents_async(
                 # Generate a unique safe filename
                 safe_filename = f"{session_id}_{uuid.uuid4()}_{file.filename}"
                 file_path = os.path.join(UPLOAD_DIR, safe_filename)
-                
+
                 with open(file_path, "wb") as buffer:
                     shutil.copyfileobj(file.file, buffer)
-                
-                saved_file_info.append({
-                    "path": file_path,
-                    "name": file.filename,
-                    "type": file.content_type
-                })
-        
+
+                saved_file_info.append(
+                    {
+                        "path": file_path,
+                        "name": file.filename,
+                        "type": file.content_type,
+                    }
+                )
+
         # 2. Prepare Payload with Links support
         task_payload = {
             "file_paths": saved_file_info,
@@ -89,24 +93,24 @@ async def extract_documents_async(
             "use_ocr_vlm": use_ocr_vlm,
             "session_id": session_id,
             "user_description": user_description,
-            "callback_url": callback_url
+            "callback_url": callback_url,
         }
 
         # 3. Trigger Celery Task
         task = extraction_task.delay(task_payload)
-        
+
         # Build response message
         input_types = []
         if has_files:
             input_types.append(f"{len(saved_file_info)} file(s)")
         if has_links:
             input_types.append(f"{len(links)} link(s)")
-        
+
         return {
             "status": "queued",
             "task_id": task.id,
             "session_id": session_id,
-            "message": f"Extraction queued for {', '.join(input_types)}."
+            "message": f"Extraction queued for {', '.join(input_types)}.",
         }
 
     except Exception as e:

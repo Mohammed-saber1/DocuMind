@@ -1,4 +1,5 @@
 """Routes module initialization."""
+
 from routes.health import base_router
 from routes.extraction import extraction_router
 from routes.chat import chat_router

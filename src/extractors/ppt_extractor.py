@@ -1,8 +1,14 @@
 """PowerPoint file extractor."""
+
 import os
 from pptx import Presentation
 
-from utils.file_utils import create_document_folder, save_text, save_metadata, save_tables
+from utils.file_utils import (
+    create_document_folder,
+    save_text,
+    save_metadata,
+    save_tables,
+)
 from utils.table_utils import format_table_as_markdown
 
 
@@ -14,16 +20,16 @@ def extract_ppt(file_path):
     text = ""
     images = []
     tables_data = []
-    counter = 1 
+    counter = 1
 
     for slide_num, slide in enumerate(prs.slides, 1):
         text += f"\n\n=== SLIDE {slide_num} ===\n"
-        
+
         for shape in slide.shapes:
             # Extract text from shapes
             if hasattr(shape, "text") and shape.text.strip():
                 text += shape.text + "\n"
-            
+
             # Check if shape is a table
             if shape.shape_type == 19:  # MSO_SHAPE_TYPE.TABLE = 19
                 try:
@@ -32,20 +38,22 @@ def extract_ppt(file_path):
                         table_data = []
                         for row in table.rows:
                             table_data.append([cell.text.strip() for cell in row.cells])
-                        
+
                         if table_data:
-                            tables_data.append({
-                                "slide": slide_num,
-                                "table_index": len(tables_data) + 1,
-                                "data": table_data
-                            })
-                            
+                            tables_data.append(
+                                {
+                                    "slide": slide_num,
+                                    "table_index": len(tables_data) + 1,
+                                    "data": table_data,
+                                }
+                            )
+
                             text += f"\n[TABLE Slide {slide_num}]\n"
                             text += format_table_as_markdown(table_data)
                             text += "\n"
                 except Exception as e:
                     print(f"⚠️ Could not extract table from slide {slide_num}: {e}")
-            
+
             # Extract images (shape_type 13 is picture)
             if shape.shape_type == 13:
                 try:
@@ -64,10 +72,13 @@ def extract_ppt(file_path):
         print(f"📊 Found {len(tables_data)} table(s) in PowerPoint")
 
     save_text(text_dir, text)
-    save_metadata(base, {
-        "source": "powerpoint", 
-        "images_found": len(images),
-        "tables_found": len(tables_data)
-    })
+    save_metadata(
+        base,
+        {
+            "source": "powerpoint",
+            "images_found": len(images),
+            "tables_found": len(tables_data),
+        },
+    )
 
     return base, images, doc_id, "powerpoint"
