@@ -28,6 +28,7 @@ License:
     MIT License
 """
 
+
 class TestPDFExtractor:
     """
     Unit tests for PDF document extraction.
